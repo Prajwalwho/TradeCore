@@ -25,3 +25,5 @@ Thumbs.db
 # Logs
 *.log
 
+# Build output
+backend/dist/
