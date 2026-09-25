@@ -1,19 +1,27 @@
-
-import "dotenv/config";
-import http from "node:http";
+import Fastify from "fastify";
 import { config } from "./config/env.js";
 
-const server = http.createServer((_req, res) => {
-  res.writeHead(200, { "Content-Type": "application/json" });
-
-  res.end(
-    JSON.stringify({
-      status: "ok",
-      service: "paper-trading-backend",
-    }),
-  );
+const app = Fastify({
+  logger: true,
 });
 
-server.listen(config.port, () => {
-  console.log(`Backend running on port ${config.port}`);
+app.get("/health", async () => {
+  return {
+    status: "ok",
+    service: "paper-trading-backend",
+  };
 });
+
+const start = async () => {
+  try {
+    await app.listen({
+      port: config.port,
+      host: "0.0.0.0",
+    });
+  } catch (error) {
+    app.log.error(error);
+    process.exit(1);
+  }
+};
+
+start();
