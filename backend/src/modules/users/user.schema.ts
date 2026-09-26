@@ -28,7 +28,21 @@ export type LoginUserInput = z.infer<typeof loginUserSchema>;
 export const loginResponseSchema = z.object({
   success: z.literal(true),
   data: z.object({
-    token: z.string(),
+    accessToken: z.string(),
+    refreshToken: z.string(),
     user: userResponseSchema,
+  }),
+});
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string(),
+});
+
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+
+export const refreshResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({
+    accessToken: z.string(),
   }),
 });
