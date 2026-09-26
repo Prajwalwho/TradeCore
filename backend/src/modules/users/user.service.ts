@@ -1,5 +1,7 @@
 import bcrypt from "bcrypt";
 import { userRepository } from "./user.repository.js";
+import { accountRepository } from "../accounts/account.repository.js";
+
 import { AppError } from "../../utils/app-error.js";
 import type { RegisterUserInput, LoginUserInput } from "./user.schema.js";
 
@@ -14,7 +16,11 @@ export const userService = {
     }
 
     const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
-    return userRepository.create(input.email, passwordHash);
+    const user = await userRepository.create(input.email, passwordHash);
+
+    await accountRepository.createForUser(user.id);
+
+    return user;
   },
 
   async loginUser(input: LoginUserInput) {
