@@ -20,6 +20,7 @@ export const orderStatus = pgEnum("order_status", [
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: varchar("email", { length: 255 }).notNull().unique(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

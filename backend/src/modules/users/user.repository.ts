@@ -1,11 +1,18 @@
 import { eq } from "drizzle-orm";
 import { db } from "../../db/postgres.js";
 import { users } from "../../db/schema.js";
-import type { CreateUserInput } from "./user.schema.js";
 
 export const userRepository = {
-  async create(input: CreateUserInput) {
-    const [user] = await db.insert(users).values(input).returning();
+  async create(email: string, passwordHash: string) {
+    const [user] = await db
+      .insert(users)
+      .values({ email, passwordHash })
+      .returning();
+
+    if (!user) {
+      throw new Error("Failed to create user");
+    }
+
     return user;
   },
 

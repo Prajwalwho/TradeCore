@@ -1,16 +1,19 @@
+import bcrypt from "bcrypt";
 import { userRepository } from "./user.repository.js";
-import type { CreateUserInput } from "./user.schema.js";
+import { AppError } from "../../utils/app-error.js";
+import type { RegisterUserInput } from "./user.schema.js";
+
+const SALT_ROUNDS = 10;
 
 export const userService = {
-  async registerUser(input: CreateUserInput) {
+  async registerUser(input: RegisterUserInput) {
     const existing = await userRepository.findByEmail(input.email);
 
     if (existing) {
-      const error = new Error("Email already registered");
-      (error as any).statusCode = 409;
-      throw error;
+      throw new AppError("Email already registered", 409);
     }
 
-    return userRepository.create(input);
+    const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
+    return userRepository.create(input.email, passwordHash);
   },
 };

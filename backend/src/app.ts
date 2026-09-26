@@ -1,3 +1,4 @@
+import { userRoutes } from "./modules/users/user.routes.js";
 import Fastify from "fastify";
 import {
   serializerCompiler,
@@ -15,6 +16,7 @@ export function buildApp() {
 
   app.register(errorHandler);
   app.register(healthRoutes);
+  app.register(userRoutes);
 
   return app;
 }
