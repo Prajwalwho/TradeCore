@@ -10,6 +10,7 @@ import { errorHandler } from "./plugins/error-handler.js";
 import { healthRoutes } from "./routes/health.js";
 import { accountRoutes } from "./modules/accounts/account.routes.js";
 import { instrumentRoutes } from "./modules/instruments/instrument.routes.js";
+import { marketDataRoutes } from "./modules/market-data/market-data.routes.js";
 
 
 export function buildApp() {
@@ -24,6 +25,7 @@ export function buildApp() {
   app.register(userRoutes);
   app.register(accountRoutes);
   app.register(instrumentRoutes);
+  app.register(marketDataRoutes);
 
   return app;
 }
