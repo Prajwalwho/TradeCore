@@ -3,6 +3,8 @@ import "dotenv/config";
 export const config = {
   port: Number(process.env.PORT ?? 3000),
 
+  jwtSecret: process.env.JWT_SECRET ?? "",
+
   database: {
     host: process.env.DB_HOST ?? "localhost",
     port: Number(process.env.DB_PORT ?? 5433),
@@ -16,3 +18,7 @@ export const config = {
     port: Number(process.env.REDIS_PORT ?? 6380),
   },
 };
+
+if (!config.jwtSecret) {
+  throw new Error("JWT_SECRET is not set in environment variables");
+}
