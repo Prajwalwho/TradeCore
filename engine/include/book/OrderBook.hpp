@@ -1,5 +1,7 @@
 #pragma once
 
+#include "execution/Trade.hpp"
+#include <vector>
 #include <map>
 #include <deque>
 #include <unordered_map>
@@ -13,6 +15,9 @@ namespace engine {
 
 class OrderBook {
 public:
+
+    std::vector<Trade> submitOrder(std::shared_ptr<Order> order);
+    
     explicit OrderBook(std::string instrumentSymbol);
 
     void addOrder(std::shared_ptr<Order> order);
