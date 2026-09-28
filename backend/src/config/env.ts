@@ -17,6 +17,11 @@ export const config = {
     host: process.env.REDIS_HOST ?? "localhost",
     port: Number(process.env.REDIS_PORT ?? 6380),
   },
+
+  engine: {
+    // Relative to the directory the backend runs from (backend/)
+    binaryPath: process.env.ENGINE_BINARY ?? "../engine/build/engine_server",
+  },
 };
 
 if (!config.jwtSecret) {

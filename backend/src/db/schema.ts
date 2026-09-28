@@ -12,6 +12,7 @@ export const orderSide = pgEnum("order_side", ["BUY", "SELL"]);
 export const orderType = pgEnum("order_type", ["MARKET", "LIMIT"]);
 export const orderStatus = pgEnum("order_status", [
   "PENDING",
+  "PARTIALLY_FILLED",
   "FILLED",
   "CANCELLED",
   "REJECTED",
@@ -50,6 +51,7 @@ export const orders = pgTable("orders", {
   side: orderSide("side").notNull(),
   type: orderType("type").notNull(),
   quantity: integer("quantity").notNull(),
+  filledQuantity: integer("filled_quantity").notNull().default(0),
   price: numeric("price", { precision: 18, scale: 4 }),
   status: orderStatus("status").notNull().default("PENDING"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -11,7 +11,7 @@ import { healthRoutes } from "./routes/health.js";
 import { accountRoutes } from "./modules/accounts/account.routes.js";
 import { instrumentRoutes } from "./modules/instruments/instrument.routes.js";
 import { marketDataRoutes } from "./modules/market-data/market-data.routes.js";
-
+import { orderRoutes } from "./modules/orders/order.routes.js";
 
 export function buildApp() {
   const app = Fastify({ logger: true }).withTypeProvider<ZodTypeProvider>();
@@ -26,6 +26,7 @@ export function buildApp() {
   app.register(accountRoutes);
   app.register(instrumentRoutes);
   app.register(marketDataRoutes);
+  app.register(orderRoutes);
 
   return app;
 }
