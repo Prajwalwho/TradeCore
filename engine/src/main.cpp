@@ -3,42 +3,67 @@
 #include "order/Order.hpp"
 #include "book/OrderBook.hpp"
 
-int main() {
-    using namespace engine;
+using namespace engine;
 
+static const char* eventName(EventType t) {
+    switch (t) {
+        case EventType::ORDER_RESTED:    return "ORDER_RESTED";
+        case EventType::TRADE_EXECUTED:  return "TRADE_EXECUTED";
+        case EventType::ORDER_FILLED:    return "ORDER_FILLED";
+        case EventType::ORDER_CANCELLED: return "ORDER_CANCELLED";
+        case EventType::ORDER_REJECTED:  return "ORDER_REJECTED";
+    }
+    return "UNKNOWN";
+}
+
+static const char* resultName(CancelResult r) {
+    return r == CancelResult::CANCELLED ? "CANCELLED" : "NOT_FOUND";
+}
+
+int main() {
     OrderBook book("AAPL");
 
-    auto sell1 = std::make_shared<Order>("sell-1", "acc-1", "AAPL", Side::SELL, OrderType::LIMIT, 50, 190.00);
-    auto sell2 = std::make_shared<Order>("sell-2", "acc-2", "AAPL", Side::SELL, OrderType::LIMIT, 50, 191.00);
-    auto sell3 = std::make_shared<Order>("sell-3", "acc-3", "AAPL", Side::SELL, OrderType::LIMIT, 50, 192.00);
-    book.addOrder(sell1);
-    book.addOrder(sell2);
-    book.addOrder(sell3);
+    book.setEventListener([](const EngineEvent& e) {
+        std::cout << "  [event] " << eventName(e.type);
+        if (!e.orderId.empty()) {
+            std::cout << " order=" << e.orderId;
+        }
+        if (e.trade) {
+            std::cout << " trade=" << e.trade->quantity << "@" << e.trade->price
+                      << " (" << e.trade->buyOrderId << "/" << e.trade->sellOrderId << ")";
+        }
+        std::cout << "\n";
+    });
 
-    std::cout << "--- Test 1: Market order sweeping 3 levels ---\n";
-    auto marketBuy = std::make_shared<Order>("mkt-buy-1", "acc-4", "AAPL", Side::BUY, OrderType::MARKET, 120);
-    auto trades1 = book.submitOrder(marketBuy);
+    std::cout << "--- Test 1: partial fill, then cancel the resting remainder ---\n";
+    auto sell1 = std::make_shared<Order>("sell-1", "acc-1", "AAPL", Side::SELL, OrderType::LIMIT, 100, 190.00);
+    auto buy1 = std::make_shared<Order>("buy-1", "acc-2", "AAPL", Side::BUY, OrderType::LIMIT, 40, 190.00);
+    book.submitOrder(sell1);
+    book.submitOrder(buy1);
+    std::cout << "sell-1 remaining: " << sell1->getRemainingQuantity()
+              << " status: " << static_cast<int>(sell1->getStatus()) << "\n";
 
-    std::cout << "Trades: " << trades1.size() << "\n";
-    for (const auto& t : trades1) {
-        std::cout << "  " << t.quantity << " @ " << t.price << "\n";
-    }
-    std::cout << "marketBuy filled: " << marketBuy->getFilledQuantity()
-              << " remaining: " << marketBuy->getRemainingQuantity() << "\n";
-    std::cout << "Best ask after sweep: "
+    auto r1 = book.cancelOrder("sell-1");
+    std::cout << "cancel sell-1: " << resultName(r1) << "\n";
+    std::cout << "sell-1 status: " << static_cast<int>(sell1->getStatus()) << "\n";
+    std::cout << "Best ask: "
               << (book.getBestAsk() ? std::to_string(*book.getBestAsk()) : "none") << "\n\n";
 
-    std::cout << "--- Test 2: Market order exceeding all available liquidity ---\n";
-    auto marketBuy2 = std::make_shared<Order>("mkt-buy-2", "acc-5", "AAPL", Side::BUY, OrderType::MARKET, 100);
-    auto trades2 = book.submitOrder(marketBuy2);
+    std::cout << "--- Test 2: cancel something that can't be cancelled ---\n";
+    std::cout << "cancel sell-1 again: " << resultName(book.cancelOrder("sell-1")) << "\n";
+    std::cout << "cancel does-not-exist: " << resultName(book.cancelOrder("does-not-exist")) << "\n\n";
 
-    std::cout << "Trades: " << trades2.size() << "\n";
-    for (const auto& t : trades2) {
-        std::cout << "  " << t.quantity << " @ " << t.price << "\n";
-    }
-    std::cout << "marketBuy2 filled: " << marketBuy2->getFilledQuantity()
-              << " remaining: " << marketBuy2->getRemainingQuantity()
-              << " status: " << static_cast<int>(marketBuy2->getStatus()) << "\n";
+    std::cout << "--- Test 3: filled orders can't be cancelled ---\n";
+    auto sell2 = std::make_shared<Order>("sell-2", "acc-3", "AAPL", Side::SELL, OrderType::LIMIT, 50, 191.00);
+    auto buy2 = std::make_shared<Order>("buy-2", "acc-4", "AAPL", Side::BUY, OrderType::MARKET, 50);
+    book.submitOrder(sell2);
+    book.submitOrder(buy2);
+    std::cout << "cancel sell-2: " << resultName(book.cancelOrder("sell-2")) << "\n\n";
+
+    std::cout << "--- Test 4: market order with no liquidity ---\n";
+    auto buy3 = std::make_shared<Order>("buy-3", "acc-5", "AAPL", Side::BUY, OrderType::MARKET, 10);
+    book.submitOrder(buy3);
+    std::cout << "buy-3 status: " << static_cast<int>(buy3->getStatus()) << "\n";
 
     return 0;
 }

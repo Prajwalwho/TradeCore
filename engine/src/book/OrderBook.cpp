@@ -7,6 +7,16 @@ namespace engine {
 OrderBook::OrderBook(std::string instrumentSymbol)
     : instrumentSymbol_(std::move(instrumentSymbol)) {}
 
+void OrderBook::setEventListener(EventListener listener) {
+    eventListener_ = std::move(listener);
+}
+
+void OrderBook::emit(const EngineEvent& event) const {
+    if (eventListener_) {
+        eventListener_(event);
+    }
+}
+
 void OrderBook::addOrder(std::shared_ptr<Order> order) {
     if (!order) {
         throw std::invalid_argument("Cannot add null order");
@@ -22,6 +32,8 @@ void OrderBook::addOrder(std::shared_ptr<Order> order) {
     } else {
         asks_[order->getPrice()].push_back(order);
     }
+
+    emit({EventType::ORDER_RESTED, order->getId(), std::nullopt});
 }
 
 bool OrderBook::removeOrder(const std::string& orderId) {
@@ -58,6 +70,20 @@ bool OrderBook::removeOrder(const std::string& orderId) {
 
     ordersById_.erase(it);
     return true;
+}
+
+CancelResult OrderBook::cancelOrder(const std::string& orderId) {
+    auto it = ordersById_.find(orderId);
+    if (it == ordersById_.end()) {
+        return CancelResult::NOT_FOUND;
+    }
+
+    auto order = it->second;   // copy the pointer: removeOrder erases the map entry
+    order->cancel();           // status -> CANCELLED (keeps any filled quantity)
+    removeOrder(orderId);
+
+    emit({EventType::ORDER_CANCELLED, orderId, std::nullopt});
+    return CancelResult::CANCELLED;
 }
 
 std::optional<double> OrderBook::getBestBid() const {
@@ -115,6 +141,7 @@ std::vector<Trade> OrderBook::submitOrder(std::shared_ptr<Order> order) {
             trade.quantity = tradeQty;
             trade.executedAt = std::chrono::system_clock::now();
             trades.push_back(trade);
+            emit({EventType::TRADE_EXECUTED, "", trade});
 
             if (restingOrder->getRemainingQuantity() == 0) {
                 level.pop_front();
@@ -122,6 +149,7 @@ std::vector<Trade> OrderBook::submitOrder(std::shared_ptr<Order> order) {
                 if (level.empty()) {
                     asks_.erase(bestAskIt);
                 }
+                emit({EventType::ORDER_FILLED, restingOrder->getId(), std::nullopt});
             }
         }
 
@@ -160,6 +188,7 @@ std::vector<Trade> OrderBook::submitOrder(std::shared_ptr<Order> order) {
             trade.quantity = tradeQty;
             trade.executedAt = std::chrono::system_clock::now();
             trades.push_back(trade);
+            emit({EventType::TRADE_EXECUTED, "", trade});
 
             if (restingOrder->getRemainingQuantity() == 0) {
                 level.pop_front();
@@ -167,6 +196,7 @@ std::vector<Trade> OrderBook::submitOrder(std::shared_ptr<Order> order) {
                 if (level.empty()) {
                     bids_.erase(bestBidIt);
                 }
+                emit({EventType::ORDER_FILLED, restingOrder->getId(), std::nullopt});
             }
         }
 
@@ -178,6 +208,13 @@ std::vector<Trade> OrderBook::submitOrder(std::shared_ptr<Order> order) {
             }
             // else: market order partially filled, leave it PARTIALLY_FILLED
         }
+    }
+
+    // Final status of the incoming order (resting orders are reported inside the loops)
+    if (order->getStatus() == OrderStatus::FILLED) {
+        emit({EventType::ORDER_FILLED, order->getId(), std::nullopt});
+    } else if (order->getStatus() == OrderStatus::REJECTED) {
+        emit({EventType::ORDER_REJECTED, order->getId(), std::nullopt});
     }
 
     return trades;
