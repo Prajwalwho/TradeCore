@@ -78,7 +78,6 @@ size_t OrderBook::getBidLevelCount() const { return bids_.size(); }
 size_t OrderBook::getAskLevelCount() const { return asks_.size(); }
 const std::string& OrderBook::getInstrumentSymbol() const { return instrumentSymbol_; }
 
-
 std::vector<Trade> OrderBook::submitOrder(std::shared_ptr<Order> order) {
     if (!order) {
         throw std::invalid_argument("Cannot submit null order");
@@ -129,9 +128,10 @@ std::vector<Trade> OrderBook::submitOrder(std::shared_ptr<Order> order) {
         if (order->getRemainingQuantity() > 0) {
             if (order->getType() == OrderType::LIMIT) {
                 addOrder(order);
-            } else {
+            } else if (order->getFilledQuantity() == 0) {
                 order->reject();
             }
+            // else: market order partially filled, leave it PARTIALLY_FILLED
         }
     } else {
         while (order->getRemainingQuantity() > 0 && !bids_.empty()) {
@@ -173,12 +173,14 @@ std::vector<Trade> OrderBook::submitOrder(std::shared_ptr<Order> order) {
         if (order->getRemainingQuantity() > 0) {
             if (order->getType() == OrderType::LIMIT) {
                 addOrder(order);
-            } else {
+            } else if (order->getFilledQuantity() == 0) {
                 order->reject();
             }
+            // else: market order partially filled, leave it PARTIALLY_FILLED
         }
     }
 
     return trades;
 }
+
 } // namespace engine

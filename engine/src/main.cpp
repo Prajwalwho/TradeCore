@@ -8,23 +8,37 @@ int main() {
 
     OrderBook book("AAPL");
 
-    auto sell1 = std::make_shared<Order>("sell-1", "acc-1", "AAPL", Side::SELL, OrderType::LIMIT, 100, 190.00);
+    auto sell1 = std::make_shared<Order>("sell-1", "acc-1", "AAPL", Side::SELL, OrderType::LIMIT, 50, 190.00);
+    auto sell2 = std::make_shared<Order>("sell-2", "acc-2", "AAPL", Side::SELL, OrderType::LIMIT, 50, 191.00);
+    auto sell3 = std::make_shared<Order>("sell-3", "acc-3", "AAPL", Side::SELL, OrderType::LIMIT, 50, 192.00);
     book.addOrder(sell1);
+    book.addOrder(sell2);
+    book.addOrder(sell3);
 
-    auto buy1 = std::make_shared<Order>("buy-1", "acc-2", "AAPL", Side::BUY, OrderType::LIMIT, 50, 191.00);
-    auto trades = book.submitOrder(buy1);
+    std::cout << "--- Test 1: Market order sweeping 3 levels ---\n";
+    auto marketBuy = std::make_shared<Order>("mkt-buy-1", "acc-4", "AAPL", Side::BUY, OrderType::MARKET, 120);
+    auto trades1 = book.submitOrder(marketBuy);
 
-    std::cout << "Trades generated: " << trades.size() << "\n";
-    for (const auto& t : trades) {
-        std::cout << "  " << t.quantity << " @ " << t.price
-                  << " (buy=" << t.buyOrderId << " sell=" << t.sellOrderId << ")\n";
+    std::cout << "Trades: " << trades1.size() << "\n";
+    for (const auto& t : trades1) {
+        std::cout << "  " << t.quantity << " @ " << t.price << "\n";
     }
+    std::cout << "marketBuy filled: " << marketBuy->getFilledQuantity()
+              << " remaining: " << marketBuy->getRemainingQuantity() << "\n";
+    std::cout << "Best ask after sweep: "
+              << (book.getBestAsk() ? std::to_string(*book.getBestAsk()) : "none") << "\n\n";
 
-    std::cout << "sell1 remaining: " << sell1->getRemainingQuantity() << "\n";
-    std::cout << "buy1 remaining: " << buy1->getRemainingQuantity() << "\n";
+    std::cout << "--- Test 2: Market order exceeding all available liquidity ---\n";
+    auto marketBuy2 = std::make_shared<Order>("mkt-buy-2", "acc-5", "AAPL", Side::BUY, OrderType::MARKET, 100);
+    auto trades2 = book.submitOrder(marketBuy2);
 
-    auto bestAsk = book.getBestAsk();
-    std::cout << "Best ask after match: " << (bestAsk ? std::to_string(*bestAsk) : "none") << "\n";
+    std::cout << "Trades: " << trades2.size() << "\n";
+    for (const auto& t : trades2) {
+        std::cout << "  " << t.quantity << " @ " << t.price << "\n";
+    }
+    std::cout << "marketBuy2 filled: " << marketBuy2->getFilledQuantity()
+              << " remaining: " << marketBuy2->getRemainingQuantity()
+              << " status: " << static_cast<int>(marketBuy2->getStatus()) << "\n";
 
     return 0;
 }
