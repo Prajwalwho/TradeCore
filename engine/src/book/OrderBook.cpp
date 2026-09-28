@@ -114,7 +114,7 @@ void OrderBook::matchAgainst(OppositeMap& oppositeSide,
         auto bestIt = oppositeSide.begin();
         const double bestPrice = bestIt->first;
 
-        if (order->getType() == OrderType::LIMIT) {
+        if (order->getPrice() > 0.0) {
             const bool crosses = isBuy ? order->getPrice() >= bestPrice
                                        : order->getPrice() <= bestPrice;
             if (!crosses) {

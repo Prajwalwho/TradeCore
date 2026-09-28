@@ -1,6 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db/postgres.js";
 import { instruments, orders } from "../../db/schema.js";
+import { decimalToCents } from "../../utils/money.js";
 
 export type OrderRow = typeof orders.$inferSelect;
 type NewOrder = typeof orders.$inferInsert;
@@ -38,5 +39,25 @@ export const orderRepository = {
       .innerJoin(instruments, eq(orders.instrumentId, instruments.id))
       .where(eq(orders.accountId, accountId))
       .orderBy(desc(orders.createdAt));
+  },
+
+  // Cash tied up by this account's open limit buys: what is still unfilled x the limit price.
+  // Derived from the orders table, so there is no second number that could drift out of sync.
+  async reservedCents(accountId: string): Promise<number> {
+    const [row] = await db
+      .select({
+        reserved: sql<string>`coalesce(sum((${orders.quantity} - ${orders.filledQuantity}) * ${orders.price}), 0)`,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.accountId, accountId),
+          eq(orders.side, "BUY"),
+          eq(orders.type, "LIMIT"),
+          inArray(orders.status, ["PENDING", "PARTIALLY_FILLED"])
+        )
+      );
+
+    return decimalToCents(row?.reserved ?? "0");
   },
 };

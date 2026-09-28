@@ -56,3 +56,19 @@ export const orders = pgTable("orders", {
   status: orderStatus("status").notNull().default("PENDING"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const trades = pgTable("trades", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  instrumentId: uuid("instrument_id")
+    .notNull()
+    .references(() => instruments.id),
+  buyOrderId: uuid("buy_order_id")
+    .notNull()
+    .references(() => orders.id),
+  sellOrderId: uuid("sell_order_id")
+    .notNull()
+    .references(() => orders.id),
+  price: numeric("price", { precision: 18, scale: 4 }).notNull(),
+  quantity: integer("quantity").notNull(),
+  executedAt: timestamp("executed_at").notNull(),
+});

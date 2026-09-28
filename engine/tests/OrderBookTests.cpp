@@ -194,3 +194,52 @@ TEST(OrderBookTest, WrongInstrumentThrows) {
     auto tsla = std::make_shared<Order>("t1", "acc", "TSLA", Side::BUY, OrderType::LIMIT, 10, 100.0);
     EXPECT_THROW(book.submitOrder(tsla), std::invalid_argument);
 }
+
+TEST(OrderBookTest, MarketBuyWithPriceCapStopsAtCapAndDoesNotRest) {
+    OrderBook book("AAPL");
+    book.submitOrder(makeOrder("s1", Side::SELL, OrderType::LIMIT, 50, 190.0));
+    book.submitOrder(makeOrder("s2", Side::SELL, OrderType::LIMIT, 50, 191.0));
+    auto s3 = makeOrder("s3", Side::SELL, OrderType::LIMIT, 50, 192.0);
+    book.submitOrder(s3);
+
+    // A market order that carries a price is a market order with a cap: never pays more than 191.
+    auto buy = makeOrder("m1", Side::BUY, OrderType::MARKET, 120, 191.0);
+    auto trades = book.submitOrder(buy);
+
+    ASSERT_EQ(trades.size(), 2u);
+    EXPECT_EQ(trades[0].price, 190.0);
+    EXPECT_EQ(trades[1].price, 191.0);
+    EXPECT_EQ(buy->getFilledQuantity(), 100);
+    EXPECT_EQ(buy->getStatus(), OrderStatus::PARTIALLY_FILLED);
+    EXPECT_EQ(s3->getRemainingQuantity(), 50);   // the 192 ask was never touched
+    EXPECT_EQ(book.getBestAsk(), 192.0);
+    EXPECT_EQ(book.getBidLevelCount(), 0u);      // and the unfilled remainder did not rest
+}
+
+TEST(OrderBookTest, MarketBuyWithCapBelowBestAskIsRejected) {
+    OrderBook book("AAPL");
+    book.submitOrder(makeOrder("s1", Side::SELL, OrderType::LIMIT, 50, 190.0));
+
+    auto buy = makeOrder("m1", Side::BUY, OrderType::MARKET, 10, 189.0);
+    auto trades = book.submitOrder(buy);
+
+    EXPECT_TRUE(trades.empty());
+    EXPECT_EQ(buy->getStatus(), OrderStatus::REJECTED);
+    EXPECT_EQ(book.getBidLevelCount(), 0u);
+}
+
+TEST(OrderBookTest, MarketSellWithPriceFloorStopsAtFloor) {
+    OrderBook book("AAPL");
+    book.submitOrder(makeOrder("b1", Side::BUY, OrderType::LIMIT, 50, 191.0));
+    book.submitOrder(makeOrder("b2", Side::BUY, OrderType::LIMIT, 50, 190.0));
+
+    auto sell = makeOrder("m1", Side::SELL, OrderType::MARKET, 80, 191.0);   // won't accept less than 191
+    auto trades = book.submitOrder(sell);
+
+    ASSERT_EQ(trades.size(), 1u);
+    EXPECT_EQ(trades[0].price, 191.0);
+    EXPECT_EQ(sell->getFilledQuantity(), 50);
+    EXPECT_EQ(sell->getStatus(), OrderStatus::PARTIALLY_FILLED);
+    EXPECT_EQ(book.getBestBid(), 190.0);
+    EXPECT_EQ(book.getAskLevelCount(), 0u);
+}

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const isWholeCents = (n: number) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6;
+
 export const placeOrderSchema = z
   .object({
     symbol: z.string().min(1),
@@ -14,6 +16,10 @@ export const placeOrderSchema = z
   })
   .refine((o) => o.type !== "MARKET" || o.price === undefined, {
     message: "MARKET orders must not include a price",
+    path: ["price"],
+  })
+  .refine((o) => o.price === undefined || isWholeCents(o.price), {
+    message: "price must be a multiple of 0.01",
     path: ["price"],
   });
 
