@@ -48,6 +48,13 @@ private:
 
     void emit(const EngineEvent& event) const;
 
+    // Matches `order` against the opposite side of the book
+    // (asks for an incoming buy, bids for an incoming sell).
+    template <typename OppositeMap>
+    void matchAgainst(OppositeMap& oppositeSide,
+                      const std::shared_ptr<Order>& order,
+                      std::vector<Trade>& trades);
+
     std::string instrumentSymbol_;
     BidMap bids_;
     AskMap asks_;
