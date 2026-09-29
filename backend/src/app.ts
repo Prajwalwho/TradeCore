@@ -13,6 +13,7 @@ import { instrumentRoutes } from "./modules/instruments/instrument.routes.js";
 import { marketDataRoutes } from "./modules/market-data/market-data.routes.js";
 import { orderRoutes } from "./modules/orders/order.routes.js";
 import { positionRoutes } from "./modules/positions/position.routes.js";
+import { portfolioRoutes } from "./modules/portfolio/portfolio.routes.js";
 
 export function buildApp() {
   const app = Fastify({ logger: true }).withTypeProvider<ZodTypeProvider>();
@@ -29,6 +30,7 @@ export function buildApp() {
   app.register(marketDataRoutes);
   app.register(orderRoutes);
   app.register(positionRoutes);
-
+  app.register(portfolioRoutes);
+  
   return app;
 }
