@@ -36,6 +36,20 @@
       "when": 1790593790587,
       "tag": "0004_balance_non_negative",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790652219045,
+      "tag": "0005_wooden_blur",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790652219883,
+      "tag": "0006_position_quantity_non_negative",
+      "breakpoints": true
     }
   ]
 }

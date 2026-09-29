@@ -6,6 +6,7 @@ import {
   numeric,
   integer,
   pgEnum,
+  unique,
 } from "drizzle-orm/pg-core";
 
 export const orderSide = pgEnum("order_side", ["BUY", "SELL"]);
@@ -72,3 +73,21 @@ export const trades = pgTable("trades", {
   quantity: integer("quantity").notNull(),
   executedAt: timestamp("executed_at").notNull(),
 });
+
+export const positions = pgTable(
+  "positions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    instrumentId: uuid("instrument_id")
+      .notNull()
+      .references(() => instruments.id),
+    quantity: integer("quantity").notNull().default(0),
+    avgCostCents: integer("avg_cost_cents").notNull().default(0),
+    realizedPnlCents: integer("realized_pnl_cents").notNull().default(0),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [unique("positions_account_instrument_unique").on(table.accountId, table.instrumentId)]
+);

@@ -1,6 +1,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db/postgres.js";
 import { accounts, orders, trades } from "../../db/schema.js";
+import { positionRepository } from "../positions/position.repository.js";
 import type { EngineEvent, EngineSubmitDone } from "../engine/engine.client.js";
 import type { OrderRow } from "../orders/order.repository.js";
 import { centsToDecimal, priceToCents } from "../../utils/money.js";
@@ -13,14 +14,12 @@ export type SettleInput = {
 };
 
 export const settlementService = {
-  // Applies the outcome of one engine command to Postgres, all or nothing.
   async settle(input: SettleInput): Promise<OrderRow> {
     const executed = input.events.flatMap((e) =>
       e.event === "TRADE_EXECUTED" && e.trade ? [e.trade] : []
     );
 
     return db.transaction(async (tx) => {
-      // 1. Load every order that took part
       const ids = new Set<string>([input.orderId]);
       for (const t of executed) {
         ids.add(t.buyOrderId);
@@ -35,7 +34,6 @@ export const settlementService = {
         throw new Error(`order ${input.orderId} not found during settlement`);
       }
 
-      // 2. Work out trade rows, fills per order, and net cash per account
       const tradeRows: (typeof trades.$inferInsert)[] = [];
       const filledDelta = new Map<string, number>();
       const cashDelta = new Map<string, number>();
@@ -63,19 +61,28 @@ export const settlementService = {
         filledDelta.set(sell.id, (filledDelta.get(sell.id) ?? 0) + t.quantity);
         cashDelta.set(buy.accountId, (cashDelta.get(buy.accountId) ?? 0) - costCents);
         cashDelta.set(sell.accountId, (cashDelta.get(sell.accountId) ?? 0) + costCents);
+
+        // Positions: buyer's holding grows, seller's holding shrinks and realizes P&L.
+        // Same fixed account-id order as the cash loop below, for the same deadlock reason.
+        const [first, second] =
+          buy.accountId < sell.accountId ? [buy, sell] : [sell, buy];
+        for (const side of [first, second]) {
+          if (side === buy) {
+            await positionRepository.applyBuy(tx, buy.accountId, incoming.instrumentId, t.quantity, priceCents);
+          } else {
+            await positionRepository.applySell(tx, sell.accountId, incoming.instrumentId, t.quantity, priceCents);
+          }
+        }
       }
 
-      // Sanity check: the fills we derived must match what the engine says the order filled.
       if ((filledDelta.get(input.orderId) ?? 0) !== input.done.filledQuantity) {
         throw new Error("engine fill quantity does not match its trade events");
       }
 
-      // 3. Record the trades
       if (tradeRows.length > 0) {
         await tx.insert(trades).values(tradeRows);
       }
 
-      // 4. Resting orders that were matched: add the new fills and derive the new status
       for (const [orderId, qty] of filledDelta) {
         if (orderId === input.orderId) {
           continue;
@@ -91,8 +98,6 @@ export const settlementService = {
           .where(eq(orders.id, orderId));
       }
 
-      // 5. The incoming order: the engine reported its final state.
-      // A market order never rests, so a partial fill means the rest was cancelled.
       const status: OrderRow["status"] =
         input.orderType === "MARKET" && input.done.status === "PARTIALLY_FILLED"
           ? "CANCELLED"
@@ -108,8 +113,6 @@ export const settlementService = {
         throw new Error(`order ${input.orderId} vanished during settlement`);
       }
 
-      // 6. Move the money. Accounts are updated in a fixed order so two settlements
-      // can never wait on each other's rows.
       for (const accountId of [...cashDelta.keys()].sort()) {
         const delta = cashDelta.get(accountId) ?? 0;
         if (delta === 0) {

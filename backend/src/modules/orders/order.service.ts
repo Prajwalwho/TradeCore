@@ -11,6 +11,8 @@ import { AppError } from "../../utils/app-error.js";
 import { centsToDecimal, decimalToCents, priceToCents } from "../../utils/money.js";
 import { createSerialQueue } from "../../utils/serial-queue.js";
 import type { PlaceOrderInput } from "./order.schema.js";
+import { positionRepository } from "../positions/position.repository.js";
+import { db } from "../../db/postgres.js";
 
 // Funds check -> persist -> match -> settle must not interleave between orders,
 // or two orders could both pass the same funds check.
@@ -66,7 +68,17 @@ async function placeOrderNow(userId: string, input: PlaceOrderInput) {
       }
       engineCents = capCents;
     }
-  }
+  } else {
+      const held = await positionRepository.holdingsFor(account.id, instrument.id);
+      const committed = await db.transaction((tx) =>
+      positionRepository.sharesCommittedToOpenSells(tx, account.id, instrument.id)
+      );
+      const available = held - committed;
+
+      if (input.quantity > available) {
+        throw new AppError("Insufficient shares", 422);
+      }
+    }
   // SELL orders are not checked yet: they need positions (Day 19).
 
   // 1. Persist first: the database is the source of truth.
