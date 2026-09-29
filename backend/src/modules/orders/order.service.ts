@@ -117,9 +117,10 @@ async function placeOrderNow(userId: string, input: PlaceOrderInput) {
 
   // 3. Settle: trades, order updates and cash movements in one transaction.
   try {
-    const updated = await settlementService.settle({
+        const updated = await settlementService.settle({
       orderId: order.id,
       orderType: input.type,
+      symbol,
       done: result.done,
       events: result.events,
     });

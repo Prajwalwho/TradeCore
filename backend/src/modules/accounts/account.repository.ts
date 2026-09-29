@@ -25,4 +25,12 @@ export const accountRepository = {
       .where(eq(accounts.userId, userId));
     return account ?? null;
   },
+
+    async findUserIdByAccountId(accountId: string) {
+    const [account] = await db
+      .select({ userId: accounts.userId })
+      .from(accounts)
+      .where(eq(accounts.id, accountId));
+    return account?.userId ?? null;
+  },
 };

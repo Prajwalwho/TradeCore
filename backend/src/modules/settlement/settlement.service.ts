@@ -2,6 +2,8 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db/postgres.js";
 import { accounts, orders, trades } from "../../db/schema.js";
 import { positionRepository } from "../positions/position.repository.js";
+import { accountRepository } from "../accounts/account.repository.js";
+import { publishUserEvent } from "../../websocket/user-events.js";
 import type { EngineEvent, EngineSubmitDone } from "../engine/engine.client.js";
 import type { OrderRow } from "../orders/order.repository.js";
 import { centsToDecimal, priceToCents } from "../../utils/money.js";
@@ -9,6 +11,7 @@ import { centsToDecimal, priceToCents } from "../../utils/money.js";
 export type SettleInput = {
   orderId: string;
   orderType: "MARKET" | "LIMIT";
+  symbol: string;
   done: EngineSubmitDone;
   events: EngineEvent[];
 };
@@ -63,9 +66,9 @@ export const settlementService = {
         cashDelta.set(sell.accountId, (cashDelta.get(sell.accountId) ?? 0) + costCents);
 
         // Positions: buyer's holding grows, seller's holding shrinks and realizes P&L.
-        // Same fixed account-id order as the cash loop below, for the same deadlock reason.
-        const [first, second] =
-          buy.accountId < sell.accountId ? [buy, sell] : [sell, buy];
+        // Fixed account-id order so two concurrent settlements touching the same two
+        // accounts always take row locks in the same order and can't deadlock.
+        const [first, second] = buy.accountId < sell.accountId ? [buy, sell] : [sell, buy];
         for (const side of [first, second]) {
           if (side === buy) {
             await positionRepository.applyBuy(tx, buy.accountId, incoming.instrumentId, t.quantity, priceCents);
@@ -98,6 +101,7 @@ export const settlementService = {
           .where(eq(orders.id, orderId));
       }
 
+      // A market order never rests, so an unfilled remainder means the rest was cancelled.
       const status: OrderRow["status"] =
         input.orderType === "MARKET" && input.done.status === "PARTIALLY_FILLED"
           ? "CANCELLED"
@@ -122,6 +126,66 @@ export const settlementService = {
           .update(accounts)
           .set({ balance: sql`${accounts.balance} + ${centsToDecimal(delta)}::numeric` })
           .where(eq(accounts.id, accountId));
+      }
+
+      // Notify every account whose order changed, including resting orders
+      // that were matched by someone else's trade just now.
+      for (const orderId of ids) {
+        const touched = byId.get(orderId);
+        if (!touched) continue;
+
+        const isIncoming = orderId === input.orderId;
+        const newFilledQuantity = isIncoming
+          ? input.done.filledQuantity
+          : touched.filledQuantity + (filledDelta.get(orderId) ?? 0);
+                const newStatus: OrderRow["status"] = isIncoming
+          ? status
+          : newFilledQuantity >= touched.quantity
+            ? "FILLED"
+            : "PARTIALLY_FILLED";
+
+        const userId = await accountRepository.findUserIdByAccountId(touched.accountId);
+        if (!userId) continue;
+
+        await publishUserEvent(userId, {
+          type: "order_update",
+          orderId: touched.id,
+          status: newStatus,
+          filledQuantity: newFilledQuantity,
+          symbol: input.symbol,
+        });
+      }
+
+      for (const t of tradeRows) {
+        const buyerUserId = await accountRepository.findUserIdByAccountId(
+          byId.get(t.buyOrderId)!.accountId
+        );
+        const sellerUserId = await accountRepository.findUserIdByAccountId(
+          byId.get(t.sellOrderId)!.accountId
+        );
+
+        if (buyerUserId) {
+          await publishUserEvent(buyerUserId, {
+            type: "trade",
+            tradeId: `${t.buyOrderId}-${t.sellOrderId}`,
+            symbol: input.symbol,
+            side: "BUY",
+            price: t.price as string,
+            quantity: t.quantity,
+            orderId: t.buyOrderId,
+          });
+        }
+        if (sellerUserId) {
+          await publishUserEvent(sellerUserId, {
+            type: "trade",
+            tradeId: `${t.buyOrderId}-${t.sellOrderId}`,
+            symbol: input.symbol,
+            side: "SELL",
+            price: t.price as string,
+            quantity: t.quantity,
+            orderId: t.sellOrderId,
+          });
+        }
       }
 
       return updated;
