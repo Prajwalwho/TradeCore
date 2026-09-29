@@ -4,6 +4,7 @@ import { engineClient } from "./modules/engine/engine.client.js";
 import { marketDataService } from "./modules/market-data/market-data.service.js";
 import { attachWebSocketServer } from "./websocket/ws.server.js";
 import { redisPublisher, redisSubscriber } from "./redis/redis.client.js";
+import { replayOpenOrders } from "./modules/engine/engine-replay.js";
 
 const app = buildApp();
 
@@ -11,6 +12,10 @@ const start = async () => {
   try {
     await engineClient.start();
     app.log.info("matching engine ready");
+
+    await replayOpenOrders();
+
+    await marketDataService.initialize();
 
     await marketDataService.initialize();
     marketDataService.startGenerating();

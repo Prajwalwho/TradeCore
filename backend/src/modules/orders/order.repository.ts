@@ -60,4 +60,16 @@ export const orderRepository = {
 
     return decimalToCents(row?.reserved ?? "0");
   },
+
+    async findOpenLimitOrders() {
+    return db
+      .select({ order: orders, symbol: instruments.symbol })
+      .from(orders)
+      .innerJoin(instruments, eq(orders.instrumentId, instruments.id))
+      .where(
+        and(eq(orders.type, "LIMIT"), inArray(orders.status, ["PENDING", "PARTIALLY_FILLED"]))
+      )
+      .orderBy(orders.createdAt);
+  },
+  
 };
