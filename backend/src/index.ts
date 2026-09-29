@@ -3,6 +3,7 @@ import { config } from "./config/env.js";
 import { engineClient } from "./modules/engine/engine.client.js";
 import { marketDataService } from "./modules/market-data/market-data.service.js";
 import { attachWebSocketServer } from "./websocket/ws.server.js";
+import { redisPublisher, redisSubscriber } from "./redis/redis.client.js";
 
 const app = buildApp();
 
@@ -29,6 +30,8 @@ const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down`);
   await app.close();
   await engineClient.stop();
+  await redisPublisher.quit();
+  await redisSubscriber.quit();
   process.exit(0);
 };
 

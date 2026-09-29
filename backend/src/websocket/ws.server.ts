@@ -1,7 +1,9 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server as HttpServer } from "node:http";
 import type { FastifyInstance } from "fastify";
-import { marketDataService, type PricePoint } from "../modules/market-data/market-data.service.js";
+import { marketDataService } from "../modules/market-data/market-data.service.js";
+import { redisSubscriber } from "../redis/redis.client.js";
+import { MARKET_DATA_CHANNEL } from "../modules/market-data/market-data.service.js";
 
 type AuthedSocket = WebSocket & { userId?: string };
 
@@ -33,7 +35,8 @@ export function attachWebSocketServer(app: FastifyInstance, server: HttpServer) 
     clients.add(socket);
     app.log.info({ userId: socket.userId }, "ws client connected");
 
-    // Send a snapshot immediately so the client isn't waiting up to 2s for the first tick.
+    // Still read straight from the local in-memory map: a fresh connection just
+    // needs *some* current values immediately, and this process already has them.
     socket.send(JSON.stringify({ type: "snapshot", prices: marketDataService.getAllPrices() }));
 
     socket.on("close", () => {
@@ -46,8 +49,15 @@ export function attachWebSocketServer(app: FastifyInstance, server: HttpServer) 
     });
   });
 
-  marketDataService.onTick((prices: PricePoint[]) => {
-    const message = JSON.stringify({ type: "price_update", prices });
+        redisSubscriber
+    .subscribe(MARKET_DATA_CHANNEL)
+    .then(() => app.log.info(`subscribed to ${MARKET_DATA_CHANNEL}`))
+    .catch((err: Error) => app.log.error({ err }, "failed to subscribe to market data channel"));
+
+  redisSubscriber.on("message", (channel: string, message: string) => {
+    if (channel !== MARKET_DATA_CHANNEL) {
+      return;
+    }
     for (const client of clients) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);

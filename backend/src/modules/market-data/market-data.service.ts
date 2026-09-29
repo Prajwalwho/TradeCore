@@ -1,4 +1,5 @@
 import { instrumentRepository } from "../instruments/instrument.repository.js";
+import { redisPublisher } from "../../redis/redis.client.js";
 
 export type PricePoint = {
   symbol: string;
@@ -6,8 +7,9 @@ export type PricePoint = {
   updatedAt: string;
 };
 
+export const MARKET_DATA_CHANNEL = "market-data:ticks";
+
 const prices = new Map<string, PricePoint>();
-const tickListeners = new Set<(prices: PricePoint[]) => void>();
 
 const STARTING_PRICES: Record<string, number> = {
   AAPL: 190.5,
@@ -48,9 +50,10 @@ export const marketDataService = {
       }
 
       const snapshot = this.getAllPrices();
-      for (const listener of tickListeners) {
-        listener(snapshot);
-      }
+      redisPublisher.publish(
+        MARKET_DATA_CHANNEL,
+        JSON.stringify({ type: "price_update", prices: snapshot })
+      );
     }, 2000);
   },
 
@@ -60,12 +63,5 @@ export const marketDataService = {
 
   getPrice(symbol: string): PricePoint | null {
     return prices.get(symbol) ?? null;
-  },
-
-  // Called on every tick with the full current price snapshot. Returns an
-  // unsubscribe function.
-  onTick(listener: (prices: PricePoint[]) => void): () => void {
-    tickListeners.add(listener);
-    return () => tickListeners.delete(listener);
   },
 };
