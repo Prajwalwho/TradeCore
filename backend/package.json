@@ -26,6 +26,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/node": "latest",
     "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.11",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"

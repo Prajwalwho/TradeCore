@@ -2,6 +2,7 @@ import { buildApp } from "./app.js";
 import { config } from "./config/env.js";
 import { engineClient } from "./modules/engine/engine.client.js";
 import { marketDataService } from "./modules/market-data/market-data.service.js";
+import { attachWebSocketServer } from "./websocket/ws.server.js";
 
 const app = buildApp();
 
@@ -12,6 +13,9 @@ const start = async () => {
 
     await marketDataService.initialize();
     marketDataService.startGenerating();
+
+    await app.ready(); // ensures app.server exists and all plugins (jwt) are loaded
+    attachWebSocketServer(app, app.server);
 
     await app.listen({ port: config.port, host: "0.0.0.0" });
   } catch (error) {

@@ -1,12 +1,13 @@
 import { instrumentRepository } from "../instruments/instrument.repository.js";
 
-type PricePoint = {
+export type PricePoint = {
   symbol: string;
   price: number;
   updatedAt: string;
 };
 
 const prices = new Map<string, PricePoint>();
+const tickListeners = new Set<(prices: PricePoint[]) => void>();
 
 const STARTING_PRICES: Record<string, number> = {
   AAPL: 190.5,
@@ -45,6 +46,11 @@ export const marketDataService = {
           updatedAt: new Date().toISOString(),
         });
       }
+
+      const snapshot = this.getAllPrices();
+      for (const listener of tickListeners) {
+        listener(snapshot);
+      }
     }, 2000);
   },
 
@@ -54,5 +60,12 @@ export const marketDataService = {
 
   getPrice(symbol: string): PricePoint | null {
     return prices.get(symbol) ?? null;
+  },
+
+  // Called on every tick with the full current price snapshot. Returns an
+  // unsubscribe function.
+  onTick(listener: (prices: PricePoint[]) => void): () => void {
+    tickListeners.add(listener);
+    return () => tickListeners.delete(listener);
   },
 };
