@@ -14,6 +14,7 @@ import { marketDataRoutes } from "./modules/market-data/market-data.routes.js";
 import { orderRoutes } from "./modules/orders/order.routes.js";
 import { positionRoutes } from "./modules/positions/position.routes.js";
 import { portfolioRoutes } from "./modules/portfolio/portfolio.routes.js";
+import cors from "@fastify/cors";
 
 export function buildApp() {
   const app = Fastify({ logger: true }).withTypeProvider<ZodTypeProvider>();
@@ -21,6 +22,10 @@ export function buildApp() {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
+  app.register(cors, {
+  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  credentials: true,
+});
   app.register(errorHandler);
   app.register(jwtPlugin);
   app.register(healthRoutes);
