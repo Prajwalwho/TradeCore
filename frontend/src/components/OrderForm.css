@@ -1,0 +1,129 @@
+.order-form-card {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 1.5rem;
+  width: 320px;
+}
+
+.account-summary {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #334155;
+}
+
+.account-summary .label {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.account-summary .value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
+.order-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.toggle-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 0.5rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.toggle-btn.active {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.toggle-btn.active.buy {
+  background: #14532d;
+  border-color: #22c55e;
+  color: #4ade80;
+}
+
+.toggle-btn.active.sell {
+  background: #7f1d1d;
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.order-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.order-form input {
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.order-form .hint {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.order-form .error {
+  background: #7f1d1d;
+  color: #fecaca;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.order-form .success {
+  background: #14532d;
+  color: #bbf7d0;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.submit-btn {
+  padding: 0.7rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 700;
+  cursor: pointer;
+  color: white;
+}
+
+.submit-btn.buy {
+  background: #22c55e;
+}
+
+.submit-btn.sell {
+  background: #ef4444;
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
