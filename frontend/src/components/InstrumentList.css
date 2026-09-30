@@ -1,0 +1,39 @@
+.instrument-table {
+  width: 100%;
+  max-width: 640px;
+  border-collapse: collapse;
+  background: #1e293b;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.instrument-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  background: #334155;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.instrument-table td {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #334155;
+}
+
+.instrument-table tr:not(:first-child) {
+  cursor: pointer;
+}
+
+.instrument-table tbody tr:hover {
+  background: #263449;
+}
+
+.instrument-table .symbol {
+  font-weight: 700;
+}
+
+.instrument-table .price {
+  font-variant-numeric: tabular-nums;
+  color: #4ade80;
+}
