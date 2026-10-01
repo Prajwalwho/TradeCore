@@ -39,4 +39,15 @@ export const orderRoutes: FastifyPluginAsyncZod = async (app) => {
       return successResponse(orders);
     }
   );
+
+    app.delete(
+    "/orders/:orderId",
+    { preHandler: requireAuth },
+    async (request) => {
+      const { userId } = request.user as { userId: string };
+      const { orderId } = request.params as { orderId: string };
+      const order = await orderService.cancelOrder(userId, orderId);
+      return successResponse(order);
+    }
+  );
 };

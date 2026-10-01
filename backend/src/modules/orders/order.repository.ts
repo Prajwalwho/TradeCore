@@ -18,6 +18,11 @@ export const orderRepository = {
     return order;
   },
 
+    async findById(id: string) {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order ?? null;
+  },
+
   async updateAfterMatch(id: string, status: OrderStatus, filledQuantity: number) {
     const [order] = await db
       .update(orders)
