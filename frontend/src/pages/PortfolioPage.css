@@ -1,0 +1,62 @@
+.summary-cards {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-card {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  flex: 1;
+}
+
+.summary-card .label {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.summary-card .value {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
+.portfolio-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1e293b;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.portfolio-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  background: #334155;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.portfolio-table td {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #334155;
+}
+
+.portfolio-table .empty {
+  text-align: center;
+  color: #64748b;
+}
+
+.symbol-link {
+  color: #60a5fa;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.pnl-pos { color: #4ade80; }
+.pnl-neg { color: #f87171; }

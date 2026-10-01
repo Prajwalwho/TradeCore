@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link,useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
 import "./Layout.css";
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -16,6 +17,12 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="app-shell">
       <header className="app-header">
         <span className="app-title">Paper Trading</span>
+
+        <nav className="app-nav">
+          <Link to="/dashboard">Markets</Link>
+          <Link to="/portfolio">Portfolio</Link>
+        </nav>
+
         <button onClick={handleLogout} className="logout-btn">
           Log out
         </button>
