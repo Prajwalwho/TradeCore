@@ -34,3 +34,7 @@ export function placeOrder(input: PlaceOrderInput): Promise<Order> {
 export function fetchOrders(): Promise<Order[]> {
   return apiFetch<Order[]>("/orders");
 }
+
+export function cancelOrder(orderId: string): Promise<Order> {
+  return apiFetch<Order>(`/orders/${orderId}`, { method: "DELETE" });
+}

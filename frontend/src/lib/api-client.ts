@@ -67,7 +67,9 @@ export async function apiFetch<T>(
   allowRetry = true
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+    if (options.body) {
+    headers.set("Content-Type", "application/json");
+  }
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }

@@ -1,0 +1,80 @@
+.orders-panel {
+  margin-top: 1.5rem;
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.orders-panel h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.orders-panel h3:not(:first-child) {
+  margin-top: 1.5rem;
+}
+
+.orders-panel .empty {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.orders-panel .panel-error {
+  background: #7f1d1d;
+  color: #fecaca;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.orders-table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.orders-table td {
+  padding: 0.5rem 0.6rem;
+  border-top: 1px solid #334155;
+}
+
+.orders-table .buy {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.orders-table .sell {
+  color: #f87171;
+  font-weight: 600;
+}
+
+.cancel-btn {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #f87171;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.cancel-btn:hover {
+  background: #7f1d1d;
+}
+
+.cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

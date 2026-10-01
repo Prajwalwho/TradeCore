@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { OrderForm } from "../components/OrderForm";
 import { PriceChart } from "../components/PriceChart";
+import { OrdersPanel } from "../components/OrdersPanel";
 import { useLivePrices } from "../hooks/useLivePrices";
 
 export function TradePage() {
@@ -26,6 +27,7 @@ export function TradePage() {
         </div>
         <OrderForm symbol={symbol} currentPrice={livePrice?.price ?? null} />
       </div>
+      <OrdersPanel symbol={symbol} />
     </Layout>
   );
 }
