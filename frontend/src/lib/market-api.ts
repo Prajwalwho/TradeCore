@@ -19,3 +19,15 @@ export async function fetchInstruments(): Promise<Instrument[]> {
 export async function fetchMarketData(): Promise<PricePoint[]> {
   return apiFetch<PricePoint[]>("/market-data");
 }
+
+export type Candle = {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
+export function fetchCandles(symbol: string): Promise<Candle[]> {
+  return apiFetch<Candle[]>(`/market-data/${symbol}/candles`);
+}
