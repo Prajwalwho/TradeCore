@@ -3,6 +3,7 @@ import { z } from "zod";
 export const priceSchema = z.object({
   symbol: z.string(),
   price: z.number(),
+  previousClose: z.number().nullable(),
   updatedAt: z.string(),
 });
 

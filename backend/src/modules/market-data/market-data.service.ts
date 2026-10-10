@@ -4,6 +4,7 @@ import { redisPublisher } from "../../redis/redis.client.js";
 export type PricePoint = {
   symbol: string;
   price: number;
+  previousClose: number | null;
   updatedAt: string;
 };
 
@@ -13,6 +14,11 @@ export type Candle = {
   high: number;
   low: number;
   close: number;
+};
+
+type YahooQuote = {
+  price: number;
+  previousClose: number | null;
 };
 
 export const MARKET_DATA_CHANNEL = "market-data:ticks";
@@ -37,16 +43,21 @@ const YAHOO_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
 };
 
-async function fetchYahooPrice(yahooSymbol: string): Promise<number | null> {
+async function fetchYahooQuote(yahooSymbol: string): Promise<YahooQuote | null> {
   try {
     const res = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d`,
       { headers: YAHOO_HEADERS }
     );
     if (!res.ok) return null;
+
     const data = await res.json();
-    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    return typeof price === "number" ? price : null;
+    const meta = data?.chart?.result?.[0]?.meta;
+    const price = meta?.regularMarketPrice;
+    if (typeof price !== "number") return null;
+
+    const prev = meta?.chartPreviousClose ?? meta?.previousClose;
+    return { price, previousClose: typeof prev === "number" ? prev : null };
   } catch {
     return null;
   }
@@ -102,10 +113,11 @@ export const marketDataService = {
     const instruments = await instrumentRepository.findAll();
     for (const instrument of instruments) {
       const yahooSymbol = YAHOO_TICKERS[instrument.symbol];
-      const livePrice = yahooSymbol ? await fetchYahooPrice(yahooSymbol) : null;
+      const quote = yahooSymbol ? await fetchYahooQuote(yahooSymbol) : null;
       prices.set(instrument.symbol, {
         symbol: instrument.symbol,
-        price: livePrice ?? 100, // fallback only if Yahoo is unreachable right at boot
+        price: quote?.price ?? 100, // fallback only if Yahoo is unreachable right at boot
+        previousClose: quote?.previousClose ?? null,
         updatedAt: new Date().toISOString(),
       });
     }
@@ -116,9 +128,15 @@ export const marketDataService = {
       for (const [symbol] of prices) {
         const yahooSymbol = YAHOO_TICKERS[symbol];
         if (!yahooSymbol) continue;
-        const livePrice = await fetchYahooPrice(yahooSymbol);
-        if (livePrice !== null) {
-          prices.set(symbol, { symbol, price: livePrice, updatedAt: new Date().toISOString() });
+
+        const quote = await fetchYahooQuote(yahooSymbol);
+        if (quote) {
+          prices.set(symbol, {
+            symbol,
+            price: quote.price,
+            previousClose: quote.previousClose,
+            updatedAt: new Date().toISOString(),
+          });
         }
         // if the fetch fails (network hiccup, market closed), we keep the last known price
       }

@@ -9,6 +9,7 @@ export type Instrument = {
 export type PricePoint = {
   symbol: string;
   price: number;
+  previousClose: number | null;
   updatedAt: string;
 };
 
