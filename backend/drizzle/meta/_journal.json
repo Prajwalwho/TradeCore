@@ -50,6 +50,13 @@
       "when": 1790652219883,
       "tag": "0006_position_quantity_non_negative",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791808134800,
+      "tag": "0007_lumpy_peter_parker",
+      "breakpoints": true
     }
   ]
 }

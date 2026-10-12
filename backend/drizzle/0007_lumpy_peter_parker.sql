@@ -1,0 +1,1 @@
+ALTER TABLE "positions" ALTER COLUMN "realized_pnl_cents" SET DATA TYPE bigint;

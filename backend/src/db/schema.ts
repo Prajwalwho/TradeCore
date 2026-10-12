@@ -5,6 +5,7 @@ import {
   timestamp,
   numeric,
   integer,
+  bigint,
   pgEnum,
   unique,
 } from "drizzle-orm/pg-core";
@@ -86,7 +87,7 @@ export const positions = pgTable(
       .references(() => instruments.id),
     quantity: integer("quantity").notNull().default(0),
     avgCostCents: integer("avg_cost_cents").notNull().default(0),
-    realizedPnlCents: integer("realized_pnl_cents").notNull().default(0),
+    realizedPnlCents: bigint("realized_pnl_cents", { mode: "number" }).notNull().default(0),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [unique("positions_account_instrument_unique").on(table.accountId, table.instrumentId)]
