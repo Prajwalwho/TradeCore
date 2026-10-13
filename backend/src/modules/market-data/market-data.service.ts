@@ -24,6 +24,8 @@ type YahooQuote = {
 export const MARKET_DATA_CHANNEL = "market-data:ticks";
 
 const prices = new Map<string, PricePoint>();
+// Symbols whose price really came from Yahoo (not the 100 fallback).
+const realPrice = new Set<string>();
 
 // Small cache so many page loads don't each hit Yahoo.
 const candleCache = new Map<string, { fetchedAt: number; candles: Candle[] }>();
@@ -120,6 +122,7 @@ export const marketDataService = {
         previousClose: quote?.previousClose ?? null,
         updatedAt: new Date().toISOString(),
       });
+      if (quote) realPrice.add(instrument.symbol);
     }
   },
 
@@ -131,6 +134,7 @@ export const marketDataService = {
 
         const quote = await fetchYahooQuote(yahooSymbol);
         if (quote) {
+          realPrice.add(symbol);
           prices.set(symbol, {
             symbol,
             price: quote.price,
@@ -155,6 +159,10 @@ export const marketDataService = {
 
   getPrice(symbol: string): PricePoint | null {
     return prices.get(symbol) ?? null;
+  },
+
+  hasRealPrice(symbol: string): boolean {
+    return realPrice.has(symbol);
   },
 
   // Real 1-minute candles for the most recent trading session.

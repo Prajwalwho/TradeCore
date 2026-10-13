@@ -22,6 +22,10 @@ export const config = {
     // Relative to the directory the backend runs from (backend/)
     binaryPath: process.env.ENGINE_BINARY ?? "../engine/build/engine_server",
   },
+
+    marketMaker: {
+    enabled: process.env.MARKET_MAKER_ENABLED === "true",
+  },
 };
 
 if (!config.jwtSecret) {

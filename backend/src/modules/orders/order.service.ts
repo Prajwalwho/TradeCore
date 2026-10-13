@@ -134,9 +134,76 @@ async function placeOrderNow(userId: string, input: PlaceOrderInput) {
   }
 }
 
+async function cancelOrderNow(userId: string, orderId: string, reconcile = false) {
+  const account = await accountRepository.findByUserId(userId);
+  if (!account) {
+    throw new AppError("Account not found", 404);
+  }
+
+  const order = await orderRepository.findById(orderId);
+  if (!order || order.accountId !== account.id) {
+    throw new AppError("Order not found", 404);
+  }
+
+  if (order.status !== "PENDING" && order.status !== "PARTIALLY_FILLED") {
+    throw new AppError(`Cannot cancel an order with status ${order.status}`, 422);
+  }
+
+  const instrument = await instrumentRepository.findById(order.instrumentId);
+  if (!instrument) {
+    throw new AppError("Instrument not found", 404);
+  }
+
+  const { done } = await engineClient.cancelOrder(instrument.symbol, orderId);
+
+  if (done.result === "NOT_FOUND") {
+    const fresh = await orderRepository.findById(orderId);
+    const stillOpen =
+      fresh && (fresh.status === "PENDING" || fresh.status === "PARTIALLY_FILLED");
+    if (reconcile && stillOpen) {
+      // The engine no longer holds this order but the database says it is open.
+      // Close it in the database so its reserved cash/shares are released.
+      const fixed = await orderRepository.updateAfterMatch(orderId, "CANCELLED", fresh.filledQuantity);
+      return toOrderResponse(fixed, instrument.symbol);
+    }
+    throw new AppError(
+      `Order could not be cancelled (current status: ${fresh?.status ?? "unknown"})`,
+      409
+    );
+  }
+
+  const updated = await orderRepository.updateAfterMatch(orderId, "CANCELLED", order.filledQuantity);
+  return toOrderResponse(updated, instrument.symbol);
+}
+
 export const orderService = {
   placeOrder(userId: string, input: PlaceOrderInput) {
     return runExclusively(() => placeOrderNow(userId, input));
+  },
+
+  cancelOrder(userId: string, orderId: string) {
+    return runExclusively(() => cancelOrderNow(userId, orderId));
+  },
+
+  // Used by the market maker: cancel old quotes and place new ones in ONE queue slot,
+  // so no user order can run in between and find an empty book.
+  replaceOrders(userId: string, cancelIds: string[], newOrders: PlaceOrderInput[]) {
+    return runExclusively(async () => {
+      for (const id of cancelIds) {
+        try {
+          await cancelOrderNow(userId, id, true);
+        } catch (err) {
+          console.warn(`[mm] cancel ${id} skipped: ${(err as Error).message}`);
+        }
+      }
+      for (const order of newOrders) {
+        try {
+          await placeOrderNow(userId, order);
+        } catch (err) {
+          console.error(`[mm] quote failed: ${(err as Error).message}`);
+        }
+      }
+    });
   },
 
   async listOrders(userId: string) {
@@ -147,58 +214,5 @@ export const orderService = {
 
     const rows = await orderRepository.findByAccountId(account.id);
     return rows.map(({ order, symbol }) => toOrderResponse(order, symbol));
-  },
-
-    async cancelOrder(userId: string, orderId: string) {
-    const account = await accountRepository.findByUserId(userId);
-    if (!account) {
-      throw new AppError("Account not found", 404);
-    }
-
-    const order = await orderRepository.findById(orderId);
-    if (!order || order.accountId !== account.id) {
-      // Same 404 whether it doesn't exist or belongs to someone else —
-      // don't leak which orders exist on the platform.
-      throw new AppError("Order not found", 404);
-    }
-
-    if (order.status !== "PENDING" && order.status !== "PARTIALLY_FILLED") {
-      throw new AppError(`Cannot cancel an order with status ${order.status}`, 422);
-    }
-
-    const instrument = await instrumentRepository.findById(order.instrumentId);
-    if (!instrument) {
-      throw new AppError("Instrument not found", 404);
-    }
-
-    const { done } = await engineClient.cancelOrder(instrument.symbol, orderId);
-
-    if (done.result === "NOT_FOUND") {
-      // The engine has no memory of it — most likely it already fully filled
-      // moments ago. Refresh from the DB and tell the truth about the current state.
-      const fresh = await orderRepository.findById(orderId);
-      throw new AppError(
-        `Order could not be cancelled (current status: ${fresh?.status ?? "unknown"})`,
-        409
-      );
-    }
-
-    const updated = await orderRepository.updateAfterMatch(
-      orderId,
-      "CANCELLED",
-      order.filledQuantity
-    );
-
-    return {
-      id: updated.id,
-      symbol: instrument.symbol,
-      side: updated.side,
-      type: updated.type,
-      quantity: updated.quantity,
-      filledQuantity: updated.filledQuantity,
-      price: updated.price,
-      status: updated.status,
-      createdAt: updated.createdAt.toISOString(),
-    };
   },
 };

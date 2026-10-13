@@ -2,6 +2,7 @@ import { buildApp } from "./app.js";
 import { config } from "./config/env.js";
 import { engineClient } from "./modules/engine/engine.client.js";
 import { marketDataService } from "./modules/market-data/market-data.service.js";
+import { marketMakerService } from "./modules/market-maker/market-maker.service.js";
 import { attachWebSocketServer } from "./websocket/ws.server.js";
 import { redisPublisher, redisSubscriber } from "./redis/redis.client.js";
 import { replayOpenOrders } from "./modules/engine/engine-replay.js";
@@ -16,14 +17,14 @@ const start = async () => {
     await replayOpenOrders();
 
     await marketDataService.initialize();
-
-    await marketDataService.initialize();
     marketDataService.startGenerating();
 
-    await app.ready(); // ensures app.server exists and all plugins (jwt) are loaded
+    await app.ready();
     attachWebSocketServer(app, app.server);
 
     await app.listen({ port: config.port, host: "0.0.0.0" });
+
+    void marketMakerService.start();
   } catch (error) {
     app.log.error(error);
     await engineClient.stop();
@@ -33,6 +34,7 @@ const start = async () => {
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down`);
+  marketMakerService.stop();
   await app.close();
   await engineClient.stop();
   await redisPublisher.quit();

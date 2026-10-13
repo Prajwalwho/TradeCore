@@ -76,5 +76,15 @@ export const orderRepository = {
       )
       .orderBy(orders.createdAt);
   },
+
+    async findOpenByAccountId(accountId: string) {
+    return db
+      .select({ order: orders, symbol: instruments.symbol })
+      .from(orders)
+      .innerJoin(instruments, eq(orders.instrumentId, instruments.id))
+      .where(
+        and(eq(orders.accountId, accountId), inArray(orders.status, ["PENDING", "PARTIALLY_FILLED"]))
+      );
+  },
   
 };
