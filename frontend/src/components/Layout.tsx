@@ -21,6 +21,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <nav className="app-nav">
           <Link to="/dashboard">Markets</Link>
           <Link to="/portfolio">Portfolio</Link>
+          <Link to="/trades">Trades</Link>
         </nav>
 
         <button onClick={handleLogout} className="logout-btn">

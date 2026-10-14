@@ -18,7 +18,7 @@ import { db } from "../../db/postgres.js";
 // or two orders could both pass the same funds check.
 const runExclusively = createSerialQueue();
 
-function toOrderResponse(order: OrderRow, symbol: string) {
+function toOrderResponse(order: OrderRow, symbol: string, avgFillPrice: string | null = null) {
   return {
     id: order.id,
     symbol,
@@ -27,6 +27,7 @@ function toOrderResponse(order: OrderRow, symbol: string) {
     quantity: order.quantity,
     filledQuantity: order.filledQuantity,
     price: order.price,
+    avgFillPrice,
     status: order.status,
     createdAt: order.createdAt.toISOString(),
   };
@@ -213,6 +214,9 @@ export const orderService = {
     }
 
     const rows = await orderRepository.findByAccountId(account.id);
-    return rows.map(({ order, symbol }) => toOrderResponse(order, symbol));
+    const avg = await orderRepository.avgFillPrices(rows.map(({ order }) => order.id));
+    return rows.map(({ order, symbol }) =>
+      toOrderResponse(order, symbol, avg.get(order.id) ?? null)
+    );
   },
 };

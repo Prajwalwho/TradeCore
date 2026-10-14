@@ -35,6 +35,7 @@ export const orderResponseSchema = z.object({
   price: z.string().nullable(),
   status: z.enum(["PENDING", "PARTIALLY_FILLED", "FILLED", "CANCELLED", "REJECTED"]),
   createdAt: z.string(),
+  avgFillPrice: z.string().nullable(),
 });
 
 export const placeOrderResponseSchema = z.object({

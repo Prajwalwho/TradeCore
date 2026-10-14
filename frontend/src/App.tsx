@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TradePage } from "./pages/TradePage";
+import { TradesPage } from "./pages/TradesPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/trade/:symbol" element={<TradePage />} />
+            <Route path="/trades" element={<TradesPage />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>

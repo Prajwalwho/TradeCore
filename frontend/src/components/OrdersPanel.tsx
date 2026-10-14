@@ -106,7 +106,7 @@ export function OrdersPanel({ symbol }: Props) {
                 <td>{o.type}</td>
                 <td>{o.quantity}</td>
                 <td>{o.filledQuantity}</td>
-                <td>{o.price ?? "—"}</td>
+                <td>{o.avgFillPrice ?? o.price ?? "—"}</td>
                 <td>{o.status}</td>
               </tr>
             ))}

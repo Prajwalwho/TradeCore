@@ -12,6 +12,7 @@ export type Order = {
   quantity: number;
   filledQuantity: number;
   price: string | null;
+  avgFillPrice: string | null;
   status: OrderStatus;
   createdAt: string;
 };

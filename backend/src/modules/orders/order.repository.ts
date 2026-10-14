@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db/postgres.js";
-import { instruments, orders } from "../../db/schema.js";
+import { instruments, orders, trades } from "../../db/schema.js";
 import { decimalToCents } from "../../utils/money.js";
 
 export type OrderRow = typeof orders.$inferSelect;
@@ -85,6 +85,50 @@ export const orderRepository = {
       .where(
         and(eq(orders.accountId, accountId), inArray(orders.status, ["PENDING", "PARTIALLY_FILLED"]))
       );
+  },
+
+    // Average price an order actually filled at, from the trades table.
+  async avgFillPrices(orderIds: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (orderIds.length === 0) return result;
+
+    const totals = new Map<string, { notional: number; qty: number }>();
+    const add = (rows: { orderId: string; notional: string; qty: string }[]) => {
+      for (const r of rows) {
+        const t = totals.get(r.orderId) ?? { notional: 0, qty: 0 };
+        t.notional += Number(r.notional);
+        t.qty += Number(r.qty);
+        totals.set(r.orderId, t);
+      }
+    };
+
+    add(
+      await db
+        .select({
+          orderId: trades.buyOrderId,
+          notional: sql<string>`sum(${trades.price} * ${trades.quantity})`,
+          qty: sql<string>`sum(${trades.quantity})`,
+        })
+        .from(trades)
+        .where(inArray(trades.buyOrderId, orderIds))
+        .groupBy(trades.buyOrderId)
+    );
+    add(
+      await db
+        .select({
+          orderId: trades.sellOrderId,
+          notional: sql<string>`sum(${trades.price} * ${trades.quantity})`,
+          qty: sql<string>`sum(${trades.quantity})`,
+        })
+        .from(trades)
+        .where(inArray(trades.sellOrderId, orderIds))
+        .groupBy(trades.sellOrderId)
+    );
+
+    for (const [id, t] of totals) {
+      if (t.qty > 0) result.set(id, (t.notional / t.qty).toFixed(2));
+    }
+    return result;
   },
   
 };
