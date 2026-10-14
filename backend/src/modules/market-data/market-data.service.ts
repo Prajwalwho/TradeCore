@@ -2,6 +2,8 @@ import { instrumentRepository } from "../instruments/instrument.repository.js";
 import { redisPublisher } from "../../redis/redis.client.js";
 import { fxService } from "./fx.service.js";
 import { currencyFor } from "../../config/currency.js";
+import { CATALOG } from "../../config/catalog.js";
+import { exchangeFor, isExchangeOpen } from "../../config/exchanges.js";
 
 export type PricePoint = {
   symbol: string;
@@ -47,12 +49,21 @@ type YahooQuote = {
 
 export const MARKET_DATA_CHANNEL = "market-data:ticks";
 
-// All prices stored here are in RUPEES. US stocks are converted from USD at the live rate.
+// Rupee prices, only for symbols that really got a quote. A symbol without a price shows "—".
 const prices = new Map<string, PricePoint>();
+// The latest quote in each stock's own currency (USD for US stocks).
+const nativeQuotes = new Map<string, YahooQuote>();
 const indices = new Map<string, IndexPoint>();
 
-// Symbols whose price really came from Yahoo (not the 100 fallback).
+// Symbols whose price really came from Yahoo.
 const realPrice = new Set<string>();
+
+// Stocks someone looked at recently are refreshed on every cycle.
+const hot = new Map<string, number>();
+const HOT_MS = 2 * 60_000;
+const BATCH = 10; // how many other stocks to refresh per 15s cycle
+let cursor = 0;
+let symbols: string[] = [];
 
 // Small caches so many page loads don't each hit Yahoo.
 const candleCache = new Map<string, { fetchedAt: number; candles: Candle[] }>();
@@ -60,15 +71,10 @@ const CANDLE_CACHE_MS = 30_000;
 const statsCache = new Map<string, { fetchedAt: number; data: StockStats }>();
 const STATS_CACHE_MS = 15_000;
 
-// Maps our internal symbols to real Yahoo Finance tickers.
-// US stocks use their plain ticker; NSE-listed Indian stocks need ".NS".
-const YAHOO_TICKERS: Record<string, string> = {
-  AAPL: "AAPL",
-  TSLA: "TSLA",
-  RELIANCE: "RELIANCE.NS",
-  TCS: "TCS.NS",
-  INFY: "INFY.NS",
-};
+// Our symbol -> Yahoo ticker, from the catalog.
+const YAHOO_TICKERS: Record<string, string> = Object.fromEntries(
+  CATALOG.map((c) => [c.symbol, c.yahoo])
+);
 
 // Market indices shown in the top ticker (display only, not tradable).
 const INDEX_TICKERS: Record<string, { yahoo: string; name: string }> = {
@@ -92,16 +98,6 @@ function rateFor(symbol: string): number | null {
 }
 
 const toRupees = (value: number, rate: number) => Math.round(value * rate * 100) / 100;
-
-function convertQuote(symbol: string, quote: YahooQuote | null): YahooQuote | null {
-  if (!quote) return null;
-  const rate = rateFor(symbol);
-  if (rate === null) return null; // never publish a USD price as if it were rupees
-  return {
-    price: toRupees(quote.price, rate),
-    previousClose: quote.previousClose === null ? null : toRupees(quote.previousClose, rate),
-  };
-}
 
 function chartUrl(yahooSymbol: string): string {
   return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1m&range=1d`;
@@ -152,13 +148,7 @@ async function fetchYahooCandles(yahooSymbol: string): Promise<Candle[] | null> 
         continue;
       }
 
-      candles.push({
-        time: timestamps[i] as number,
-        open,
-        high,
-        low,
-        close,
-      });
+      candles.push({ time: timestamps[i] as number, open, high, low, close });
     }
     return candles;
   } catch {
@@ -229,55 +219,106 @@ async function refreshIndices(): Promise<void> {
   }
 }
 
+async function fetchAndStore(symbol: string): Promise<void> {
+  const yahoo = YAHOO_TICKERS[symbol];
+  if (!yahoo) return;
+  const quote = await fetchYahooQuote(yahoo);
+  if (quote) nativeQuotes.set(symbol, quote);
+}
+
+// Turns the stored native quote into a rupee price at the current exchange rate.
+function applyQuote(symbol: string): void {
+  const quote = nativeQuotes.get(symbol);
+  const rate = rateFor(symbol);
+  if (!quote || rate === null) return;
+
+  prices.set(symbol, {
+    symbol,
+    price: toRupees(quote.price, rate),
+    previousClose: quote.previousClose === null ? null : toRupees(quote.previousClose, rate),
+    updatedAt: new Date().toISOString(),
+  });
+  realPrice.add(symbol);
+}
+
+async function inChunks<T>(items: T[], size: number, fn: (item: T) => Promise<void>): Promise<void> {
+  for (let i = 0; i < items.length; i += size) {
+    await Promise.all(items.slice(i, i + size).map(fn));
+  }
+}
+
+// Which stocks to fetch from Yahoo this cycle. Closed exchanges are not polled again.
+function pickDue(): string[] {
+  const now = Date.now();
+  const due = new Set<string>();
+  const missing: string[] = [];
+  const openCold: string[] = [];
+
+  for (const symbol of symbols) {
+    if (!nativeQuotes.has(symbol)) {
+      missing.push(symbol);
+      continue;
+    }
+    const exchange = exchangeFor(symbol);
+    if (!exchange || !isExchangeOpen(exchange)) continue;
+
+    if ((hot.get(symbol) ?? 0) > now - HOT_MS) due.add(symbol);
+    else openCold.push(symbol);
+  }
+
+  for (const symbol of missing.slice(0, BATCH)) due.add(symbol);
+
+  const take = Math.min(BATCH, openCold.length);
+  for (let i = 0; i < take; i++) {
+    due.add(openCold[(cursor + i) % openCold.length] as string);
+  }
+  cursor = openCold.length > 0 ? (cursor + take) % openCold.length : 0;
+
+  return [...due];
+}
+
+async function refreshCycle(): Promise<void> {
+  await fxService.refresh();
+  await inChunks(pickDue(), 5, fetchAndStore);
+  // Re-convert everything, so US stocks follow the dollar rate even while their market is closed.
+  for (const symbol of nativeQuotes.keys()) applyQuote(symbol);
+  await refreshIndices();
+}
+
+let cycleRunning = false;
+
 export const marketDataService = {
   async initialize() {
     await fxService.refresh();
 
-    const instruments = await instrumentRepository.findAll();
-    for (const instrument of instruments) {
-      const yahooSymbol = YAHOO_TICKERS[instrument.symbol];
-      const quote = yahooSymbol
-        ? convertQuote(instrument.symbol, await fetchYahooQuote(yahooSymbol))
-        : null;
-      prices.set(instrument.symbol, {
-        symbol: instrument.symbol,
-        price: quote?.price ?? 100, // placeholder only; not marked as a real price
-        previousClose: quote?.previousClose ?? null,
-        updatedAt: new Date().toISOString(),
-      });
-      if (quote) realPrice.add(instrument.symbol);
-    }
+    const rows = await instrumentRepository.findAll();
+    symbols = rows.map((r) => r.symbol).filter((s) => YAHOO_TICKERS[s]);
+
+    await inChunks(symbols, 5, fetchAndStore);
+    for (const symbol of symbols) applyQuote(symbol);
     await refreshIndices();
+
+    const missing = symbols.filter((s) => !prices.has(s));
+    if (missing.length > 0) {
+      console.warn(`[market-data] no price yet for: ${missing.join(", ")}`);
+    }
   },
 
   startGenerating() {
     setInterval(async () => {
-      await fxService.refresh();
-
-      for (const [symbol] of prices) {
-        const yahooSymbol = YAHOO_TICKERS[symbol];
-        if (!yahooSymbol) continue;
-
-        const quote = convertQuote(symbol, await fetchYahooQuote(yahooSymbol));
-        if (quote) {
-          realPrice.add(symbol);
-          prices.set(symbol, {
-            symbol,
-            price: quote.price,
-            previousClose: quote.previousClose,
-            updatedAt: new Date().toISOString(),
-          });
-        }
-        // if the fetch fails (network hiccup, market closed), we keep the last known price
+      if (cycleRunning) return;
+      cycleRunning = true;
+      try {
+        await refreshCycle();
+        redisPublisher.publish(
+          MARKET_DATA_CHANNEL,
+          JSON.stringify({ type: "price_update", prices: this.getAllPrices() })
+        );
+      } catch (err) {
+        console.error("[market-data] refresh failed", err);
+      } finally {
+        cycleRunning = false;
       }
-
-      await refreshIndices();
-
-      const snapshot = this.getAllPrices();
-      redisPublisher.publish(
-        MARKET_DATA_CHANNEL,
-        JSON.stringify({ type: "price_update", prices: snapshot })
-      );
     }, 15000);
   },
 
@@ -301,6 +342,7 @@ export const marketDataService = {
   async getCandles(symbol: string): Promise<Candle[] | null> {
     const yahooSymbol = YAHOO_TICKERS[symbol];
     if (!yahooSymbol) return null;
+    hot.set(symbol, Date.now());
 
     const cached = candleCache.get(symbol);
     if (cached && Date.now() - cached.fetchedAt < CANDLE_CACHE_MS) {
@@ -329,6 +371,7 @@ export const marketDataService = {
   async getStats(symbol: string): Promise<StockStats | null> {
     const yahooSymbol = YAHOO_TICKERS[symbol];
     if (!yahooSymbol) return null;
+    hot.set(symbol, Date.now());
 
     const cached = statsCache.get(symbol);
     if (cached && Date.now() - cached.fetchedAt < STATS_CACHE_MS) {

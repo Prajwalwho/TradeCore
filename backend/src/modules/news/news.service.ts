@@ -1,3 +1,5 @@
+import { CATALOG } from "../../config/catalog.js";
+
 export type NewsItem = {
   id: string;
   title: string;
@@ -6,22 +8,18 @@ export type NewsItem = {
   publishedAt: string;
 };
 
-// Search queries per symbol. "ALL" is general market news.
-const NEWS_QUERIES: Record<string, string> = {
-  ALL: "Sensex Nifty",
-  AAPL: "AAPL",
-  TSLA: "TSLA",
-  RELIANCE: "RELIANCE.NS",
-  TCS: "TCS.NS",
-  INFY: "INFY.NS",
-};
-
 const YAHOO_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
 };
 
 const cache = new Map<string, { fetchedAt: number; items: NewsItem[] }>();
 const CACHE_MS = 5 * 60_000;
+
+// "ALL" is general market news; any catalog symbol searches by its Yahoo ticker.
+function queryFor(symbol: string): { key: string; query: string } {
+  const entry = CATALOG.find((c) => c.symbol === symbol);
+  return entry ? { key: symbol, query: entry.yahoo } : { key: "ALL", query: "Sensex Nifty" };
+}
 
 async function fetchNews(query: string): Promise<NewsItem[] | null> {
   try {
@@ -67,8 +65,7 @@ async function fetchNews(query: string): Promise<NewsItem[] | null> {
 
 export const newsService = {
   async get(symbol: string): Promise<NewsItem[]> {
-    const key = NEWS_QUERIES[symbol] ? symbol : "ALL";
-    const query = NEWS_QUERIES[key] as string;
+    const { key, query } = queryFor(symbol);
 
     const cached = cache.get(key);
     if (cached && Date.now() - cached.fetchedAt < CACHE_MS) {

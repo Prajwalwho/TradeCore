@@ -1,4 +1,6 @@
-export type ExchangeCode = "NSE" | "US";
+import { CATALOG, type ExchangeCode } from "./catalog.js";
+
+export type { ExchangeCode };
 
 type Exchange = {
   code: ExchangeCode;
@@ -13,14 +15,10 @@ export const EXCHANGES: Record<ExchangeCode, Exchange> = {
   US: { code: "US", name: "US", timeZone: "America/New_York", open: [9, 30], close: [16, 0] },
 };
 
-// Which exchange each symbol trades on.
-export const SYMBOL_EXCHANGE: Record<string, ExchangeCode> = {
-  AAPL: "US",
-  TSLA: "US",
-  RELIANCE: "NSE",
-  TCS: "NSE",
-  INFY: "NSE",
-};
+// Which exchange each symbol trades on, taken from the catalog.
+export const SYMBOL_EXCHANGE: Record<string, ExchangeCode> = Object.fromEntries(
+  CATALOG.map((c) => [c.symbol, c.exchange])
+);
 
 export function exchangeFor(symbol: string): ExchangeCode | null {
   return SYMBOL_EXCHANGE[symbol] ?? null;
