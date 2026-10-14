@@ -153,3 +153,16 @@ Put each variable on its own line. Never commit `.env`.
 ## Status
  
 Working end-to-end: auth, accounts, live prices and candles, order matching, settlement, positions and P&L, real-time updates, and market-maker liquidity. The engine has 37 unit tests. Backend integration tests and an engine benchmark are planned. See [`docs/demo-script.md`](docs/demo-script.md) for a guided walkthrough.
+
+## Tests and performance
+
+Backend integration tests run the real app against a separate Postgres database and check settlement, funds and share reservation, price-time priority, cancellation, and that total cash across all accounts never changes (`npm test`).
+
+Measured on an Intel Core i5-13420H laptop (WSL2, Docker Postgres):
+
+| What | Result |
+|---|---|
+| C++ engine through its JSON stdin/stdout protocol | about 38,000 orders/sec (200,000 random limit orders, 78% trading); single-order round trip p50 87 µs, p99 278 µs |
+| Full order path: funds check, Postgres, engine, settlement transaction | about 70 orders/sec, about 36 settled trades/sec |
+
+The full path is much slower by design: orders are processed one at a time so two orders can never pass the same funds check, and each one makes several database round trips.

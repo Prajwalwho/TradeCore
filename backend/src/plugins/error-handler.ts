@@ -1,7 +1,9 @@
-import type { FastifyError, FastifyInstance } from "fastify";
+import fp from "fastify-plugin";
+import type { FastifyError } from "fastify";
 import { errorResponse } from "../utils/response.js";
 
-export async function errorHandler(app: FastifyInstance) {
+// Wrapped with fastify-plugin so this handler applies to every route, not only to itself.
+export const errorHandler = fp(async (app) => {
   app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error(error);
 
@@ -13,4 +15,4 @@ export async function errorHandler(app: FastifyInstance) {
 
     reply.status(statusCode).send(errorResponse(message, statusCode));
   });
-}
+});
