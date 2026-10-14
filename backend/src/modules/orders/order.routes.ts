@@ -6,13 +6,13 @@ import {
 } from "./order.schema.js";
 import { orderService } from "./order.service.js";
 import { successResponse } from "../../utils/response.js";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, requireVerified } from "../../middleware/auth.js";
 
 export const orderRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/orders",
     {
-      preHandler: requireAuth,
+      preHandler: [requireAuth, requireVerified],
       schema: {
         body: placeOrderSchema,
         response: { 200: placeOrderResponseSchema },
@@ -40,7 +40,7 @@ export const orderRoutes: FastifyPluginAsyncZod = async (app) => {
     }
   );
 
-    app.delete(
+  app.delete(
     "/orders/:orderId",
     { preHandler: requireAuth },
     async (request) => {

@@ -1,5 +1,6 @@
 import { userRoutes } from "./modules/users/user.routes.js";
 import Fastify from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import { jwtPlugin } from "./plugins/jwt.js";
 import {
   serializerCompiler,
@@ -41,6 +42,8 @@ export function buildApp() {
   });
   app.register(errorHandler);
   app.register(jwtPlugin);
+  // A general limit per IP address; the login, register and password routes set stricter ones.
+  app.register(rateLimit, { global: true, max: 300, timeWindow: "1 minute" });
   app.register(healthRoutes);
   app.register(userRoutes);
   app.register(accountRoutes);

@@ -1,8 +1,9 @@
 import { z } from "zod";
 
+// bcrypt only uses the first 72 bytes of a password, so longer ones are refused instead of silently cut.
 export const registerUserSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(8).max(72),
 });
 
 export type RegisterUserInput = z.infer<typeof registerUserSchema>;
@@ -11,6 +12,7 @@ export const userResponseSchema = z.object({
   id: z.string(),
   email: z.string(),
   createdAt: z.string(),
+  emailVerified: z.boolean(),
 });
 
 export const registerResponseSchema = z.object({
@@ -45,4 +47,13 @@ export const refreshResponseSchema = z.object({
   data: z.object({
     accessToken: z.string(),
   }),
+});
+
+export const verifyEmailSchema = z.object({ token: z.string().min(10) });
+
+export const forgotPasswordSchema = z.object({ email: z.string().email() });
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(10),
+  password: z.string().min(8).max(72),
 });

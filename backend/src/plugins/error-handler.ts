@@ -7,8 +7,10 @@ export async function errorHandler(app: FastifyInstance) {
 
     const statusCode = error.statusCode ?? 500;
 
-    reply.status(statusCode).send(
-      errorResponse(error.message ?? "Something went wrong", statusCode)
-    );
+    // Never show internal error text (database messages and so on) to the outside world.
+    const message =
+      statusCode >= 500 ? "Something went wrong" : (error.message ?? "Something went wrong");
+
+    reply.status(statusCode).send(errorResponse(message, statusCode));
   });
 }

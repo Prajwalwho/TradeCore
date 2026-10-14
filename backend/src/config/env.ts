@@ -5,6 +5,9 @@ export const config = {
 
   jwtSecret: process.env.JWT_SECRET ?? "",
 
+  // Where the website lives. Used to build the links inside emails.
+  appUrl: process.env.APP_URL ?? "http://localhost:5173",
+
   database: {
     host: process.env.DB_HOST ?? "localhost",
     port: Number(process.env.DB_PORT ?? 5433),
@@ -23,11 +26,11 @@ export const config = {
     binaryPath: process.env.ENGINE_BINARY ?? "../engine/build/engine_server",
   },
 
-    marketMaker: {
+  marketMaker: {
     enabled: process.env.MARKET_MAKER_ENABLED === "true",
   },
 
-    marketHours: {
+  marketHours: {
     enforce: process.env.ENFORCE_MARKET_HOURS === "true",
   },
 };

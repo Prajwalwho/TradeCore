@@ -3,6 +3,9 @@ import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { WatchlistPage } from "./pages/WatchlistPage";
 import { TradePage } from "./pages/TradePage";
 import { TradesPage } from "./pages/TradesPage";
@@ -17,6 +20,9 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<WatchlistPage />} />

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { MarketStatusBar } from "./MarketStatusBar";
 import { IndexTicker } from "./IndexTicker";
+import { VerifyBanner } from "./VerifyBanner";
 
 import "./Layout.css";
 
@@ -32,6 +33,7 @@ export function Layout({ children }: { children: ReactNode }) {
           Log out
         </button>
       </header>
+      <VerifyBanner />
       <MarketStatusBar />
       <IndexTicker />
       <main className="app-main">{children}</main>

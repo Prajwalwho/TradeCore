@@ -2,12 +2,12 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { placeOrderSchema } from "../orders/order.schema.js";
 import { amoService } from "./amo.service.js";
 import { successResponse } from "../../utils/response.js";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, requireVerified } from "../../middleware/auth.js";
 
 export const amoRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/amo-orders",
-    { preHandler: requireAuth, schema: { body: placeOrderSchema } },
+    { preHandler: [requireAuth, requireVerified], schema: { body: placeOrderSchema } },
     async (request) => {
       const { userId } = request.user as { userId: string };
       return successResponse(await amoService.place(userId, request.body));

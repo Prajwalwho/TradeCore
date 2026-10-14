@@ -28,4 +28,12 @@ export const userRepository = {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user ?? null;
   },
+
+  async markEmailVerified(userId: string) {
+    await db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
+  },
+
+  async updatePassword(userId: string, passwordHash: string) {
+    await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+  },
 };

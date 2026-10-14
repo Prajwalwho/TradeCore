@@ -59,15 +59,15 @@ async function tryRefresh(): Promise<boolean> {
 }
 
 // Every backend response is either {success:true, data:...} or an error body
-// with a `message` field (Day 2's response envelope). This is the one place
-// that unwraps that shape, so every page just gets back plain data or a thrown ApiError.
+// {success:false, error:{message}}. This is the one place that unwraps that shape,
+// so every page just gets back plain data or a thrown ApiError.
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
   allowRetry = true
 ): Promise<T> {
   const headers = new Headers(options.headers);
-    if (options.body) {
+  if (options.body) {
     headers.set("Content-Type", "application/json");
   }
   if (accessToken) {
@@ -86,7 +86,8 @@ export async function apiFetch<T>(
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new ApiError(res.status, body?.message ?? `Request failed (${res.status})`);
+    const message = body?.error?.message ?? body?.message ?? `Request failed (${res.status})`;
+    throw new ApiError(res.status, message);
   }
 
   return body.data as T;
