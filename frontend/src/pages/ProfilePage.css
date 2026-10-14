@@ -1,0 +1,37 @@
+.pf-error { color: #ef4444; }
+.pf-user {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1.25rem; margin: 1rem 0;
+  background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+}
+.pf-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #475569; color: #fff; font-size: 1.5rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.pf-email { font-size: 1.1rem; font-weight: 600; }
+.pf-tag { color: #94a3b8; font-size: 0.85rem; }
+.pf-card {
+  padding: 1.25rem; margin-bottom: 1rem;
+  background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+}
+.pf-card h3 { margin: 0 0 0.75rem; color: #94a3b8; font-size: 0.9rem; text-transform: uppercase; }
+.pf-total { font-size: 2rem; font-weight: 700; margin-bottom: 1rem; }
+.pf-row { display: flex; gap: 3rem; }
+.pf-label { display: block; color: #94a3b8; font-size: 0.8rem; }
+.pf-val { font-weight: 600; }
+.pf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
+.pf-stat {
+  padding: 1.25rem; text-align: center;
+  background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+}
+.pf-stat.wide { grid-column: 1 / -1; }
+.pf-stat strong { display: block; font-size: 1.4rem; margin-bottom: 0.25rem; }
+.pf-stat span { color: #94a3b8; font-size: 0.85rem; }
+.pf-empty { color: #94a3b8; margin: 0; }
+.pf-table { width: 100%; border-collapse: collapse; }
+.pf-table th { text-align: left; color: #94a3b8; font-size: 0.8rem; padding: 0.5rem; }
+.pf-table td { padding: 0.6rem 0.5rem; border-top: 1px solid #334155; }
+.pf-table .num { text-align: right; }
+.pos { color: #22c55e; }
+.neg { color: #ef4444; }

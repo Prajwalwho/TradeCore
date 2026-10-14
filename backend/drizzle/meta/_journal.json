@@ -64,6 +64,13 @@
       "when": 1791954890878,
       "tag": "0008_daffy_union_jack",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791956649307,
+      "tag": "0009_bitter_shaman",
+      "breakpoints": true
     }
   ]
 }

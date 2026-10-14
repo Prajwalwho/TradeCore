@@ -124,3 +124,18 @@ export const watchlistItems = pgTable(
   },
   (table) => [unique("watchlist_user_instrument_unique").on(table.userId, table.instrumentId)]
 );
+
+export const realizedPnlEvents = pgTable("realized_pnl_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => accounts.id),
+  instrumentId: uuid("instrument_id")
+    .notNull()
+    .references(() => instruments.id),
+  quantity: integer("quantity").notNull(),
+  sellPriceCents: integer("sell_price_cents").notNull(),
+  avgCostCents: integer("avg_cost_cents").notNull(),
+  pnlCents: bigint("pnl_cents", { mode: "number" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

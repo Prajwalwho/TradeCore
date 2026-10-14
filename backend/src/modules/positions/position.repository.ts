@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db/postgres.js";
-import { instruments, positions } from "../../db/schema.js";
+import { instruments, positions, realizedPnlEvents } from "../../db/schema.js";
 
 export type PositionRow = typeof positions.$inferSelect;
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -60,6 +60,17 @@ export const positionRepository = {
       })
       .where(eq(positions.id, existing.id))
       .returning();
+
+    // Keep a record of this sell's P&L for the profile page and reports.
+    await tx.insert(realizedPnlEvents).values({
+      accountId,
+      instrumentId,
+      quantity,
+      sellPriceCents: priceCents,
+      avgCostCents: existing.avgCostCents,
+      pnlCents: realizedDeltaCents,
+    });
+
     return row!;
   },
 
@@ -92,7 +103,8 @@ export const positionRepository = {
       );
     return Number(row?.committed ?? 0);
   },
-    async holdingsFor(accountId: string, instrumentId: string): Promise<number> {
+
+  async holdingsFor(accountId: string, instrumentId: string): Promise<number> {
     const [row] = await db
       .select({ quantity: positions.quantity })
       .from(positions)
