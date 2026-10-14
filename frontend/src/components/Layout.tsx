@@ -24,6 +24,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <Link to="/dashboard">Watchlist</Link>
           <Link to="/portfolio">Portfolio</Link>
           <Link to="/trades">Trades</Link>
+          <Link to="/tools">Tools</Link>
           <Link to="/profile">Profile</Link>
         </nav>
 

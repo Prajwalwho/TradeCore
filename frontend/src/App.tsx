@@ -8,6 +8,7 @@ import { TradePage } from "./pages/TradePage";
 import { TradesPage } from "./pages/TradesPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { ToolsPage } from "./pages/ToolsPage";
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/trade/:symbol" element={<TradePage />} />
             <Route path="/trades" element={<TradesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/tools" element={<ToolsPage />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>

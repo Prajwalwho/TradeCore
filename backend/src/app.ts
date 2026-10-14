@@ -18,6 +18,8 @@ import { portfolioRoutes } from "./modules/portfolio/portfolio.routes.js";
 import { amoRoutes } from "./modules/amo/amo.routes.js";
 import { watchlistRoutes } from "./modules/watchlist/watchlist.routes.js";
 import { profileRoutes } from "./modules/profile/profile.routes.js";
+import { moversRoutes } from "./modules/movers/movers.routes.js";
+import { newsRoutes } from "./modules/news/news.routes.js";
 import cors from "@fastify/cors";
 
 export function buildApp() {
@@ -51,6 +53,8 @@ export function buildApp() {
   app.register(amoRoutes);
   app.register(watchlistRoutes);
   app.register(profileRoutes);
+  app.register(moversRoutes);
+  app.register(newsRoutes);
 
   return app;
 }
