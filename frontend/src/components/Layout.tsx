@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { Link,useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { MarketStatusBar } from "./MarketStatusBar";
 
 import "./Layout.css";
 
@@ -28,6 +29,8 @@ export function Layout({ children }: { children: ReactNode }) {
           Log out
         </button>
       </header>
+      <MarketStatusBar />
+      <main className="app-main">{children}</main>
       <main className="app-main">{children}</main>
     </div>
   );

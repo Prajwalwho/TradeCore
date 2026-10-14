@@ -14,6 +14,7 @@ import { marketDataRoutes } from "./modules/market-data/market-data.routes.js";
 import { orderRoutes } from "./modules/orders/order.routes.js";
 import { positionRoutes } from "./modules/positions/position.routes.js";
 import { portfolioRoutes } from "./modules/portfolio/portfolio.routes.js";
+import { marketStatusRoutes } from "./modules/market-data/market-status.routes.js";
 import cors from "@fastify/cors";
 
 export function buildApp() {
@@ -40,6 +41,7 @@ export function buildApp() {
   app.register(accountRoutes);
   app.register(instrumentRoutes);
   app.register(marketDataRoutes);
+  app.register(marketStatusRoutes);
   app.register(orderRoutes);
   app.register(positionRoutes);
   app.register(portfolioRoutes);

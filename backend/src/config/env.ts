@@ -26,6 +26,10 @@ export const config = {
     marketMaker: {
     enabled: process.env.MARKET_MAKER_ENABLED === "true",
   },
+
+    marketHours: {
+    enforce: process.env.ENFORCE_MARKET_HOURS === "true",
+  },
 };
 
 if (!config.jwtSecret) {

@@ -13,6 +13,8 @@ import { createSerialQueue } from "../../utils/serial-queue.js";
 import type { PlaceOrderInput } from "./order.schema.js";
 import { positionRepository } from "../positions/position.repository.js";
 import { db } from "../../db/postgres.js";
+import { config } from "../../config/env.js";
+import { EXCHANGES, exchangeFor, isExchangeOpen } from "../../config/exchanges.js";
 
 // Funds check -> persist -> match -> settle must not interleave between orders,
 // or two orders could both pass the same funds check.
@@ -33,8 +35,8 @@ function toOrderResponse(order: OrderRow, symbol: string, avgFillPrice: string |
   };
 }
 
-async function placeOrderNow(userId: string, input: PlaceOrderInput) {
-  const account = await accountRepository.findByUserId(userId);
+async function placeOrderNow(userId: string, input: PlaceOrderInput, skipMarketHours = false) {
+const account = await accountRepository.findByUserId(userId);
   if (!account) {
     throw new AppError("Account not found", 404);
   }
@@ -43,6 +45,13 @@ async function placeOrderNow(userId: string, input: PlaceOrderInput) {
   const instrument = await instrumentRepository.findBySymbol(symbol);
   if (!instrument) {
     throw new AppError(`Unknown instrument: ${symbol}`, 404);
+  }
+
+    if (config.marketHours.enforce && !skipMarketHours) {
+    const exchange = exchangeFor(symbol);
+    if (exchange && !isExchangeOpen(exchange)) {
+      throw new AppError(`${EXCHANGES[exchange].name} market is closed right now`, 422);
+    }
   }
 
   const limitCents = input.price === undefined ? undefined : priceToCents(input.price);
@@ -199,7 +208,7 @@ export const orderService = {
       }
       for (const order of newOrders) {
         try {
-          await placeOrderNow(userId, order);
+          await placeOrderNow(userId, order,true);
         } catch (err) {
           console.error(`[mm] quote failed: ${(err as Error).message}`);
         }
