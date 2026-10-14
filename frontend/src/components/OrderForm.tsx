@@ -31,7 +31,12 @@ export function OrderForm({ symbol, currentPrice }: Props) {
     setPosition(positions.find((p) => p.symbol === symbol) ?? null);
   }
 
-    useEffect(() => {
+  useEffect(() => {
+    refreshAccountInfo().catch(() => setError("Could not load account info"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol]);
+
+  useEffect(() => {
     const load = () =>
       fetchMarketStatus()
         .then((list) => {
@@ -69,7 +74,7 @@ export function OrderForm({ symbol, currentPrice }: Props) {
 
     setSubmitting(true);
     try {
-      c      if (marketOpen === false) {
+      if (marketOpen === false) {
         await placeAmo({ symbol, side, type, quantity: parsedQuantity, price: parsedPrice });
         setAmoMessage("AMO order placed. It will run when the market opens.");
       } else {
@@ -206,7 +211,7 @@ export function OrderForm({ symbol, currentPrice }: Props) {
           disabled={submitting}
           className={`ticket-submit ${side.toLowerCase()}`}
         >
-                    {submitting
+          {submitting
             ? "Placing..."
             : marketOpen === false
               ? `AMO ${side === "BUY" ? "Buy" : "Sell"} ${symbol}`

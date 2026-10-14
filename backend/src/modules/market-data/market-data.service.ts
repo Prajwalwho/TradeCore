@@ -24,6 +24,20 @@ export type Candle = {
   close: number;
 };
 
+export type StockStats = {
+  symbol: string;
+  last: number;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  previousClose: number | null;
+  change: number | null;
+  changePct: number | null;
+  volume: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyTwoWeekLow: number | null;
+};
+
 type YahooQuote = {
   price: number;
   previousClose: number | null;
@@ -37,9 +51,11 @@ const indices = new Map<string, IndexPoint>();
 // Symbols whose price really came from Yahoo (not the 100 fallback).
 const realPrice = new Set<string>();
 
-// Small cache so many page loads don't each hit Yahoo.
+// Small caches so many page loads don't each hit Yahoo.
 const candleCache = new Map<string, { fetchedAt: number; candles: Candle[] }>();
 const CANDLE_CACHE_MS = 30_000;
+const statsCache = new Map<string, { fetchedAt: number; data: StockStats }>();
+const STATS_CACHE_MS = 15_000;
 
 // Maps our internal symbols to real Yahoo Finance tickers.
 // US stocks use their plain ticker; NSE-listed Indian stocks need ".NS".
@@ -61,12 +77,19 @@ const YAHOO_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
 };
 
+const num = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
+const numbersOnly = (arr: unknown): number[] =>
+  Array.isArray(arr) ? arr.filter((v): v is number => typeof v === "number") : [];
+
+function chartUrl(yahooSymbol: string): string {
+  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1m&range=1d`;
+}
+
 async function fetchYahooQuote(yahooSymbol: string): Promise<YahooQuote | null> {
   try {
-    const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1m&range=1d`,
-      { headers: YAHOO_HEADERS }
-    );
+    const res = await fetch(chartUrl(yahooSymbol), { headers: YAHOO_HEADERS });
     if (!res.ok) return null;
 
     const data = await res.json();
@@ -83,10 +106,7 @@ async function fetchYahooQuote(yahooSymbol: string): Promise<YahooQuote | null> 
 
 async function fetchYahooCandles(yahooSymbol: string): Promise<Candle[] | null> {
   try {
-    const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1m&range=1d`,
-      { headers: YAHOO_HEADERS }
-    );
+    const res = await fetch(chartUrl(yahooSymbol), { headers: YAHOO_HEADERS });
     if (!res.ok) return null;
 
     const data = await res.json();
@@ -121,6 +141,46 @@ async function fetchYahooCandles(yahooSymbol: string): Promise<Candle[] | null> 
       });
     }
     return candles;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchYahooStats(symbol: string, yahooSymbol: string): Promise<StockStats | null> {
+  try {
+    const res = await fetch(chartUrl(yahooSymbol), { headers: YAHOO_HEADERS });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    const meta = result?.meta;
+    if (!meta) return null;
+
+    const quote = result?.indicators?.quote?.[0];
+    const opens = numbersOnly(quote?.open);
+    const highs = numbersOnly(quote?.high);
+    const lows = numbersOnly(quote?.low);
+    const volumes = numbersOnly(quote?.volume);
+
+    const last = prices.get(symbol)?.price ?? num(meta.regularMarketPrice);
+    if (last === null || last === undefined) return null;
+
+    const previousClose = num(meta.chartPreviousClose) ?? num(meta.previousClose);
+    const change = previousClose ? last - previousClose : null;
+
+    return {
+      symbol,
+      last,
+      open: opens[0] ?? null,
+      high: num(meta.regularMarketDayHigh) ?? (highs.length ? Math.max(...highs) : null),
+      low: num(meta.regularMarketDayLow) ?? (lows.length ? Math.min(...lows) : null),
+      previousClose,
+      change,
+      changePct: change !== null && previousClose ? (change / previousClose) * 100 : null,
+      volume: num(meta.regularMarketVolume) ?? (volumes.length ? volumes.reduce((a, b) => a + b, 0) : null),
+      fiftyTwoWeekHigh: num(meta.fiftyTwoWeekHigh),
+      fiftyTwoWeekLow: num(meta.fiftyTwoWeekLow),
+    };
   } catch {
     return null;
   }
@@ -221,5 +281,24 @@ export const marketDataService = {
     }
 
     return cached?.candles ?? null; // fall back to stale data rather than nothing
+  },
+
+  // Open / high / low / volume etc. for the stock detail panel.
+  async getStats(symbol: string): Promise<StockStats | null> {
+    const yahooSymbol = YAHOO_TICKERS[symbol];
+    if (!yahooSymbol) return null;
+
+    const cached = statsCache.get(symbol);
+    if (cached && Date.now() - cached.fetchedAt < STATS_CACHE_MS) {
+      return cached.data;
+    }
+
+    const data = await fetchYahooStats(symbol, yahooSymbol);
+    if (data) {
+      statsCache.set(symbol, { fetchedAt: Date.now(), data });
+      return data;
+    }
+
+    return cached?.data ?? null;
   },
 };

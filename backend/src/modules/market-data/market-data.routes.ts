@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { getPricesResponseSchema, getPriceResponseSchema } from "./market-data.schema.js";
 import { marketDataService } from "./market-data.service.js";
+import { getDepth } from "./market-depth.repository.js";
 import { successResponse } from "../../utils/response.js";
 import { AppError } from "../../utils/app-error.js";
 
@@ -56,4 +57,15 @@ export const marketDataRoutes: FastifyPluginAsyncZod = async (app) => {
       return successResponse(candles);
     }
   );
+
+  app.get("/market-data/:symbol/stats", async (request) => {
+    const symbol = (request.params as { symbol: string }).symbol.toUpperCase();
+    const [stats, depth] = await Promise.all([marketDataService.getStats(symbol), getDepth(symbol)]);
+
+    if (!stats) {
+      throw new AppError("Stats unavailable", 404);
+    }
+
+    return successResponse({ ...stats, ...depth });
+  });
 };
