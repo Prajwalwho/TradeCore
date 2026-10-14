@@ -1,5 +1,7 @@
 import { instrumentRepository } from "../instruments/instrument.repository.js";
 import { redisPublisher } from "../../redis/redis.client.js";
+import { fxService } from "./fx.service.js";
+import { currencyFor } from "../../config/currency.js";
 
 export type PricePoint = {
   symbol: string;
@@ -45,6 +47,7 @@ type YahooQuote = {
 
 export const MARKET_DATA_CHANNEL = "market-data:ticks";
 
+// All prices stored here are in RUPEES. US stocks are converted from USD at the live rate.
 const prices = new Map<string, PricePoint>();
 const indices = new Map<string, IndexPoint>();
 
@@ -82,6 +85,23 @@ const num = (v: unknown): number | null =>
 
 const numbersOnly = (arr: unknown): number[] =>
   Array.isArray(arr) ? arr.filter((v): v is number => typeof v === "number") : [];
+
+// Multiplier that turns a symbol's native price into rupees, or null if the rate is not known yet.
+function rateFor(symbol: string): number | null {
+  return currencyFor(symbol) === "USD" ? fxService.getUsdInr() : 1;
+}
+
+const toRupees = (value: number, rate: number) => Math.round(value * rate * 100) / 100;
+
+function convertQuote(symbol: string, quote: YahooQuote | null): YahooQuote | null {
+  if (!quote) return null;
+  const rate = rateFor(symbol);
+  if (rate === null) return null; // never publish a USD price as if it were rupees
+  return {
+    price: toRupees(quote.price, rate),
+    previousClose: quote.previousClose === null ? null : toRupees(quote.previousClose, rate),
+  };
+}
 
 function chartUrl(yahooSymbol: string): string {
   return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1m&range=1d`;
@@ -134,10 +154,10 @@ async function fetchYahooCandles(yahooSymbol: string): Promise<Candle[] | null> 
 
       candles.push({
         time: timestamps[i] as number,
-        open: Number(open.toFixed(2)),
-        high: Number(high.toFixed(2)),
-        low: Number(low.toFixed(2)),
-        close: Number(close.toFixed(2)),
+        open,
+        high,
+        low,
+        close,
       });
     }
     return candles;
@@ -146,7 +166,11 @@ async function fetchYahooCandles(yahooSymbol: string): Promise<Candle[] | null> 
   }
 }
 
-async function fetchYahooStats(symbol: string, yahooSymbol: string): Promise<StockStats | null> {
+async function fetchYahooStats(
+  symbol: string,
+  yahooSymbol: string,
+  rate: number
+): Promise<StockStats | null> {
   try {
     const res = await fetch(chartUrl(yahooSymbol), { headers: YAHOO_HEADERS });
     if (!res.ok) return null;
@@ -162,24 +186,27 @@ async function fetchYahooStats(symbol: string, yahooSymbol: string): Promise<Sto
     const lows = numbersOnly(quote?.low);
     const volumes = numbersOnly(quote?.volume);
 
-    const last = prices.get(symbol)?.price ?? num(meta.regularMarketPrice);
-    if (last === null || last === undefined) return null;
+    const conv = (v: number | null): number | null => (v === null ? null : toRupees(v, rate));
 
-    const previousClose = num(meta.chartPreviousClose) ?? num(meta.previousClose);
+    const nativeLast = num(meta.regularMarketPrice);
+    const last = prices.get(symbol)?.price ?? (nativeLast === null ? null : toRupees(nativeLast, rate));
+    if (last === null) return null;
+
+    const previousClose = conv(num(meta.chartPreviousClose) ?? num(meta.previousClose));
     const change = previousClose ? last - previousClose : null;
 
     return {
       symbol,
       last,
-      open: opens[0] ?? null,
-      high: num(meta.regularMarketDayHigh) ?? (highs.length ? Math.max(...highs) : null),
-      low: num(meta.regularMarketDayLow) ?? (lows.length ? Math.min(...lows) : null),
+      open: conv(opens[0] ?? null),
+      high: conv(num(meta.regularMarketDayHigh) ?? (highs.length ? Math.max(...highs) : null)),
+      low: conv(num(meta.regularMarketDayLow) ?? (lows.length ? Math.min(...lows) : null)),
       previousClose,
       change,
       changePct: change !== null && previousClose ? (change / previousClose) * 100 : null,
       volume: num(meta.regularMarketVolume) ?? (volumes.length ? volumes.reduce((a, b) => a + b, 0) : null),
-      fiftyTwoWeekHigh: num(meta.fiftyTwoWeekHigh),
-      fiftyTwoWeekLow: num(meta.fiftyTwoWeekLow),
+      fiftyTwoWeekHigh: conv(num(meta.fiftyTwoWeekHigh)),
+      fiftyTwoWeekLow: conv(num(meta.fiftyTwoWeekLow)),
     };
   } catch {
     return null;
@@ -204,13 +231,17 @@ async function refreshIndices(): Promise<void> {
 
 export const marketDataService = {
   async initialize() {
+    await fxService.refresh();
+
     const instruments = await instrumentRepository.findAll();
     for (const instrument of instruments) {
       const yahooSymbol = YAHOO_TICKERS[instrument.symbol];
-      const quote = yahooSymbol ? await fetchYahooQuote(yahooSymbol) : null;
+      const quote = yahooSymbol
+        ? convertQuote(instrument.symbol, await fetchYahooQuote(yahooSymbol))
+        : null;
       prices.set(instrument.symbol, {
         symbol: instrument.symbol,
-        price: quote?.price ?? 100, // fallback only if Yahoo is unreachable right at boot
+        price: quote?.price ?? 100, // placeholder only; not marked as a real price
         previousClose: quote?.previousClose ?? null,
         updatedAt: new Date().toISOString(),
       });
@@ -221,11 +252,13 @@ export const marketDataService = {
 
   startGenerating() {
     setInterval(async () => {
+      await fxService.refresh();
+
       for (const [symbol] of prices) {
         const yahooSymbol = YAHOO_TICKERS[symbol];
         if (!yahooSymbol) continue;
 
-        const quote = await fetchYahooQuote(yahooSymbol);
+        const quote = convertQuote(symbol, await fetchYahooQuote(yahooSymbol));
         if (quote) {
           realPrice.add(symbol);
           prices.set(symbol, {
@@ -264,7 +297,7 @@ export const marketDataService = {
     return Array.from(indices.values());
   },
 
-  // Real 1-minute candles for the most recent trading session.
+  // Real 1-minute candles for the most recent trading session, in rupees.
   async getCandles(symbol: string): Promise<Candle[] | null> {
     const yahooSymbol = YAHOO_TICKERS[symbol];
     if (!yahooSymbol) return null;
@@ -274,8 +307,17 @@ export const marketDataService = {
       return cached.candles;
     }
 
-    const candles = await fetchYahooCandles(yahooSymbol);
-    if (candles && candles.length > 0) {
+    const rate = rateFor(symbol);
+    const raw = rate === null ? null : await fetchYahooCandles(yahooSymbol);
+    if (raw && raw.length > 0 && rate !== null) {
+      // The whole session is converted at the current rate so the chart lines up with the live price.
+      const candles = raw.map((c) => ({
+        time: c.time,
+        open: toRupees(c.open, rate),
+        high: toRupees(c.high, rate),
+        low: toRupees(c.low, rate),
+        close: toRupees(c.close, rate),
+      }));
       candleCache.set(symbol, { fetchedAt: Date.now(), candles });
       return candles;
     }
@@ -283,7 +325,7 @@ export const marketDataService = {
     return cached?.candles ?? null; // fall back to stale data rather than nothing
   },
 
-  // Open / high / low / volume etc. for the stock detail panel.
+  // Open / high / low / volume etc. for the stock detail panel, in rupees.
   async getStats(symbol: string): Promise<StockStats | null> {
     const yahooSymbol = YAHOO_TICKERS[symbol];
     if (!yahooSymbol) return null;
@@ -293,7 +335,10 @@ export const marketDataService = {
       return cached.data;
     }
 
-    const data = await fetchYahooStats(symbol, yahooSymbol);
+    const rate = rateFor(symbol);
+    if (rate === null) return cached?.data ?? null;
+
+    const data = await fetchYahooStats(symbol, yahooSymbol, rate);
     if (data) {
       statsCache.set(symbol, { fetchedAt: Date.now(), data });
       return data;
