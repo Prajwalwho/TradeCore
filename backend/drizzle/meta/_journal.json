@@ -57,6 +57,13 @@
       "when": 1791808134800,
       "tag": "0007_lumpy_peter_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791954890878,
+      "tag": "0008_daffy_union_jack",
+      "breakpoints": true
     }
   ]
 }

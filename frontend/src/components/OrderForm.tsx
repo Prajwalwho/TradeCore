@@ -3,6 +3,8 @@ import { fetchAccount } from "../lib/account-api";
 import { fetchPositions, type Position } from "../lib/positions-api";
 import { placeOrder, type Order, type OrderType, type Side } from "../lib/orders-api";
 import { ApiError } from "../lib/api-client";
+import { placeAmo } from "../lib/amo-api";
+import { fetchMarketStatus } from "../lib/market-status-api";
 import "./OrderForm.css";
 
 type Props = {
@@ -20,6 +22,8 @@ export function OrderForm({ symbol, currentPrice }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
+  const [marketOpen, setMarketOpen] = useState<boolean | null>(null);
+  const [amoMessage, setAmoMessage] = useState<string | null>(null);
 
   async function refreshAccountInfo() {
     const [account, positions] = await Promise.all([fetchAccount(), fetchPositions()]);
@@ -27,9 +31,17 @@ export function OrderForm({ symbol, currentPrice }: Props) {
     setPosition(positions.find((p) => p.symbol === symbol) ?? null);
   }
 
-  useEffect(() => {
-    refreshAccountInfo().catch(() => setError("Could not load account info"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+    const load = () =>
+      fetchMarketStatus()
+        .then((list) => {
+          const s = list.find((m) => m.symbols.includes(symbol));
+          setMarketOpen(s ? s.open : null);
+        })
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 30_000);
+    return () => clearInterval(id);
   }, [symbol]);
 
   const effectivePrice =
@@ -41,6 +53,7 @@ export function OrderForm({ symbol, currentPrice }: Props) {
     e.preventDefault();
     setError(null);
     setLastOrder(null);
+    setAmoMessage(null);
 
     const parsedQuantity = Number(quantity);
     if (!Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
@@ -56,14 +69,19 @@ export function OrderForm({ symbol, currentPrice }: Props) {
 
     setSubmitting(true);
     try {
-      const order = await placeOrder({
-        symbol,
-        side,
-        type,
-        quantity: parsedQuantity,
-        price: parsedPrice,
-      });
-      setLastOrder(order);
+      c      if (marketOpen === false) {
+        await placeAmo({ symbol, side, type, quantity: parsedQuantity, price: parsedPrice });
+        setAmoMessage("AMO order placed. It will run when the market opens.");
+      } else {
+        const order = await placeOrder({
+          symbol,
+          side,
+          type,
+          quantity: parsedQuantity,
+          price: parsedPrice,
+        });
+        setLastOrder(order);
+      }
       setQuantity("1");
       setPrice("");
       await refreshAccountInfo();
@@ -172,6 +190,7 @@ export function OrderForm({ symbol, currentPrice }: Props) {
         </div>
 
         {error && <p className="ticket-error">{error}</p>}
+        {amoMessage && <p className="ticket-success">{amoMessage}</p>}
         {lastOrder && (
           <p
             className={
@@ -187,7 +206,11 @@ export function OrderForm({ symbol, currentPrice }: Props) {
           disabled={submitting}
           className={`ticket-submit ${side.toLowerCase()}`}
         >
-          {submitting ? "Placing..." : `${side === "BUY" ? "Buy" : "Sell"} ${symbol}`}
+                    {submitting
+            ? "Placing..."
+            : marketOpen === false
+              ? `AMO ${side === "BUY" ? "Buy" : "Sell"} ${symbol}`
+              : `${side === "BUY" ? "Buy" : "Sell"} ${symbol}`}
         </button>
       </form>
     </div>

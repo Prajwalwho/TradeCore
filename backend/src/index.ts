@@ -6,6 +6,7 @@ import { marketMakerService } from "./modules/market-maker/market-maker.service.
 import { attachWebSocketServer } from "./websocket/ws.server.js";
 import { redisPublisher, redisSubscriber } from "./redis/redis.client.js";
 import { replayOpenOrders } from "./modules/engine/engine-replay.js";
+import { amoService } from "./modules/amo/amo.service.js";
 
 const app = buildApp();
 
@@ -25,6 +26,7 @@ const start = async () => {
     await app.listen({ port: config.port, host: "0.0.0.0" });
 
     void marketMakerService.start();
+    amoService.startScheduler();
   } catch (error) {
     app.log.error(error);
     await engineClient.stop();
@@ -35,6 +37,7 @@ const start = async () => {
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down`);
   marketMakerService.stop();
+  amoService.stopScheduler();
   await app.close();
   await engineClient.stop();
   await redisPublisher.quit();

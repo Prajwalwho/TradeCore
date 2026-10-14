@@ -49,5 +49,6 @@ export function allMarketStatuses(now = new Date()) {
     code,
     name: EXCHANGES[code].name,
     open: isExchangeOpen(code, now),
+    symbols: Object.keys(SYMBOL_EXCHANGE).filter((s) => SYMBOL_EXCHANGE[s] === code),
   }));
 }

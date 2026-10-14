@@ -11,10 +11,12 @@ import { healthRoutes } from "./routes/health.js";
 import { accountRoutes } from "./modules/accounts/account.routes.js";
 import { instrumentRoutes } from "./modules/instruments/instrument.routes.js";
 import { marketDataRoutes } from "./modules/market-data/market-data.routes.js";
+import { marketStatusRoutes } from "./modules/market-data/market-status.routes.js";
 import { orderRoutes } from "./modules/orders/order.routes.js";
 import { positionRoutes } from "./modules/positions/position.routes.js";
 import { portfolioRoutes } from "./modules/portfolio/portfolio.routes.js";
-import { marketStatusRoutes } from "./modules/market-data/market-status.routes.js";
+import { amoRoutes } from "./modules/amo/amo.routes.js";
+import { watchlistRoutes } from "./modules/watchlist/watchlist.routes.js";
 import cors from "@fastify/cors";
 
 export function buildApp() {
@@ -24,16 +26,16 @@ export function buildApp() {
   app.setSerializerCompiler(serializerCompiler);
 
   app.register(cors, {
-  origin: [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-});
+    origin: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:8080",
+      "http://127.0.0.1:8080",
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  });
   app.register(errorHandler);
   app.register(jwtPlugin);
   app.register(healthRoutes);
@@ -45,6 +47,8 @@ export function buildApp() {
   app.register(orderRoutes);
   app.register(positionRoutes);
   app.register(portfolioRoutes);
-  
+  app.register(amoRoutes);
+  app.register(watchlistRoutes);
+
   return app;
 }

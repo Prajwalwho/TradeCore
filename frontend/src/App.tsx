@@ -3,7 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
-import { DashboardPage } from "./pages/DashboardPage";
+import { WatchlistPage } from "./pages/WatchlistPage";
 import { TradePage } from "./pages/TradePage";
 import { TradesPage } from "./pages/TradesPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
@@ -17,7 +17,7 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard" element={<WatchlistPage />} />
             <Route path="/trade/:symbol" element={<TradePage />} />
             <Route path="/trades" element={<TradesPage />} />
           </Route>

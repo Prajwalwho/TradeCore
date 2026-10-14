@@ -8,6 +8,14 @@ export type PricePoint = {
   updatedAt: string;
 };
 
+export type IndexPoint = {
+  symbol: string;
+  name: string;
+  price: number;
+  previousClose: number | null;
+  updatedAt: string;
+};
+
 export type Candle = {
   time: number; // unix seconds, UTC
   open: number;
@@ -24,6 +32,8 @@ type YahooQuote = {
 export const MARKET_DATA_CHANNEL = "market-data:ticks";
 
 const prices = new Map<string, PricePoint>();
+const indices = new Map<string, IndexPoint>();
+
 // Symbols whose price really came from Yahoo (not the 100 fallback).
 const realPrice = new Set<string>();
 
@@ -41,6 +51,12 @@ const YAHOO_TICKERS: Record<string, string> = {
   INFY: "INFY.NS",
 };
 
+// Market indices shown in the top ticker (display only, not tradable).
+const INDEX_TICKERS: Record<string, { yahoo: string; name: string }> = {
+  NIFTY: { yahoo: "^NSEI", name: "NIFTY 50" },
+  BANKNIFTY: { yahoo: "^NSEBANK", name: "BANK NIFTY" },
+};
+
 const YAHOO_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
 };
@@ -48,7 +64,7 @@ const YAHOO_HEADERS = {
 async function fetchYahooQuote(yahooSymbol: string): Promise<YahooQuote | null> {
   try {
     const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1m&range=1d`,
       { headers: YAHOO_HEADERS }
     );
     if (!res.ok) return null;
@@ -68,7 +84,7 @@ async function fetchYahooQuote(yahooSymbol: string): Promise<YahooQuote | null> 
 async function fetchYahooCandles(yahooSymbol: string): Promise<Candle[] | null> {
   try {
     const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1m&range=1d`,
       { headers: YAHOO_HEADERS }
     );
     if (!res.ok) return null;
@@ -110,6 +126,22 @@ async function fetchYahooCandles(yahooSymbol: string): Promise<Candle[] | null> 
   }
 }
 
+async function refreshIndices(): Promise<void> {
+  for (const [symbol, info] of Object.entries(INDEX_TICKERS)) {
+    const quote = await fetchYahooQuote(info.yahoo);
+    if (quote) {
+      indices.set(symbol, {
+        symbol,
+        name: info.name,
+        price: quote.price,
+        previousClose: quote.previousClose,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    // on failure we keep the last known value
+  }
+}
+
 export const marketDataService = {
   async initialize() {
     const instruments = await instrumentRepository.findAll();
@@ -124,6 +156,7 @@ export const marketDataService = {
       });
       if (quote) realPrice.add(instrument.symbol);
     }
+    await refreshIndices();
   },
 
   startGenerating() {
@@ -145,6 +178,8 @@ export const marketDataService = {
         // if the fetch fails (network hiccup, market closed), we keep the last known price
       }
 
+      await refreshIndices();
+
       const snapshot = this.getAllPrices();
       redisPublisher.publish(
         MARKET_DATA_CHANNEL,
@@ -163,6 +198,10 @@ export const marketDataService = {
 
   hasRealPrice(symbol: string): boolean {
     return realPrice.has(symbol);
+  },
+
+  getIndices(): IndexPoint[] {
+    return Array.from(indices.values());
   },
 
   // Real 1-minute candles for the most recent trading session.

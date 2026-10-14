@@ -1,7 +1,8 @@
 import { type ReactNode } from "react";
-import { Link,useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { MarketStatusBar } from "./MarketStatusBar";
+import { IndexTicker } from "./IndexTicker";
 
 import "./Layout.css";
 
@@ -20,7 +21,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <span className="app-title">Paper Trading</span>
 
         <nav className="app-nav">
-          <Link to="/dashboard">Markets</Link>
+          <Link to="/dashboard">Watchlist</Link>
           <Link to="/portfolio">Portfolio</Link>
           <Link to="/trades">Trades</Link>
         </nav>
@@ -30,7 +31,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </button>
       </header>
       <MarketStatusBar />
-      <main className="app-main">{children}</main>
+      <IndexTicker />
       <main className="app-main">{children}</main>
     </div>
   );

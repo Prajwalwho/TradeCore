@@ -92,3 +92,35 @@ export const positions = pgTable(
   },
   (table) => [unique("positions_account_instrument_unique").on(table.accountId, table.instrumentId)]
 );
+
+export const scheduledOrders = pgTable("scheduled_orders", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => accounts.id),
+  instrumentId: uuid("instrument_id")
+    .notNull()
+    .references(() => instruments.id),
+  side: orderSide("side").notNull(),
+  type: orderType("type").notNull(),
+  quantity: integer("quantity").notNull(),
+  price: numeric("price", { precision: 18, scale: 4 }),
+  status: varchar("status", { length: 20 }).notNull().default("SCHEDULED"),
+  note: varchar("note", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const watchlistItems = pgTable(
+  "watchlist_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    instrumentId: uuid("instrument_id")
+      .notNull()
+      .references(() => instruments.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [unique("watchlist_user_instrument_unique").on(table.userId, table.instrumentId)]
+);
