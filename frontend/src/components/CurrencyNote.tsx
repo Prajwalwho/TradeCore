@@ -16,9 +16,9 @@ export function CurrencyNote({ symbol, price }: Props) {
   if (!fx || fx.usdInr === null || !fx.usdSymbols.includes(symbol)) return null;
 
   return (
-    <p style={{ color: "#94a3b8", fontSize: "0.85rem", margin: "0 0 1.25rem", textAlign: "center" }}>
-      {symbol} trades in US dollars. Prices here are converted to ₹ at 1 USD = ₹{fx.usdInr.toFixed(2)}
-      {price !== null ? ` (≈ $${(price / fx.usdInr).toFixed(2)} per share)` : ""}.
+    <p className="currency-note">
+      {symbol} trades in US dollars. Prices here are converted to rupees at 1 USD = ₹{fx.usdInr.toFixed(2)}
+      {price !== null ? ` (about $${(price / fx.usdInr).toFixed(2)} per share)` : ""}.
     </p>
   );
 }

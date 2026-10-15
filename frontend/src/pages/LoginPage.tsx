@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../lib/api-client";
-import "../auth.css";
+import { AuthLayout } from "../components/AuthLayout";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -20,16 +20,15 @@ export function LoginPage() {
       await login(email, password);
       navigate("/dashboard");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Login failed");
+      setError(err instanceof ApiError ? err.message : "Could not log in. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="auth-page">
+    <AuthLayout title="Log in" subtitle="Welcome back. Pick up where you left off.">
       <form onSubmit={handleSubmit} className="auth-form">
-        <h1>Log in</h1>
         {error && <p className="error">{error}</p>}
         <label>
           Email
@@ -37,23 +36,18 @@ export function LoginPage() {
         </label>
         <label>
           Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
         <button type="submit" disabled={loading}>
           {loading ? "Logging in..." : "Log in"}
         </button>
         <p>
-          <Link to="/forgot-password">Forgot password?</Link>
+          <Link to="/forgot-password">Forgot your password?</Link>
         </p>
         <p>
-          No account? <Link to="/register">Register</Link>
+          New here? <Link to="/register">Create a free account</Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

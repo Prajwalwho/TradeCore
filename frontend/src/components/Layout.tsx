@@ -1,11 +1,20 @@
 import { type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { APP_NAME } from "../brand";
+import { Logo } from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 import { MarketStatusBar } from "./MarketStatusBar";
 import { IndexTicker } from "./IndexTicker";
 import { VerifyBanner } from "./VerifyBanner";
 
-import "./Layout.css";
+const NAV = [
+  { to: "/dashboard", label: "Watchlist" },
+  { to: "/portfolio", label: "Portfolio" },
+  { to: "/trades", label: "Trades" },
+  { to: "/tools", label: "Tools" },
+  { to: "/profile", label: "Profile" },
+];
 
 export function Layout({ children }: { children: ReactNode }) {
   const { logout } = useAuth();
@@ -18,24 +27,36 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <span className="app-title">Paper Trading</span>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <Link to="/dashboard" className="brand">
+            <Logo size={28} />
+            <span>{APP_NAME}</span>
+          </Link>
 
-        <nav className="app-nav">
-          <Link to="/dashboard">Watchlist</Link>
-          <Link to="/portfolio">Portfolio</Link>
-          <Link to="/trades">Trades</Link>
-          <Link to="/tools">Tools</Link>
-          <Link to="/profile">Profile</Link>
-        </nav>
+          <nav className="app-nav">
+            {NAV.map((item) => (
+              <NavLink key={item.to} to={item.to}>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
 
-        <button onClick={handleLogout} className="logout-btn">
-          Log out
-        </button>
+          <div className="topbar-actions">
+            <ThemeToggle />
+            <button onClick={handleLogout} className="logout-btn">
+              Log out
+            </button>
+          </div>
+        </div>
       </header>
       <VerifyBanner />
-      <MarketStatusBar />
-      <IndexTicker />
+      <div className="market-strip">
+        <div className="market-strip-inner">
+          <IndexTicker />
+          <MarketStatusBar />
+        </div>
+      </div>
       <main className="app-main">{children}</main>
     </div>
   );

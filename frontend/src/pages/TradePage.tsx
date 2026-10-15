@@ -5,7 +5,9 @@ import { PriceChart } from "../components/PriceChart";
 import { OrdersPanel } from "../components/OrdersPanel";
 import { StockStats } from "../components/StockStats";
 import { CurrencyNote } from "../components/CurrencyNote";
+import { PriceCell } from "../components/PriceCell";
 import { useLivePrices } from "../hooks/useLivePrices";
+import { avatarColor, initials } from "../lib/avatar";
 
 export function TradePage() {
   const { symbol } = useParams<{ symbol: string }>();
@@ -16,16 +18,30 @@ export function TradePage() {
   }
 
   const livePrice = prices[symbol] ?? null;
+  const prev = livePrice?.previousClose ?? null;
+  const change = livePrice && prev ? livePrice.price - prev : null;
+  const pct = change !== null && prev ? (change / prev) * 100 : null;
 
   return (
     <Layout>
-      <h1>{symbol}</h1>
-      <p style={{ color: "#94a3b8", marginBottom: "0.75rem" }}>
-        {livePrice ? `Live price: ₹${livePrice.price.toFixed(2)}` : "Loading price..."}
-      </p>
+      <div className="trade-head">
+        <span className="avatar" style={{ background: avatarColor(symbol) }}>
+          {initials(symbol)}
+        </span>
+        <h1>{symbol}</h1>
+        <div className="trade-price">
+          <PriceCell prefix="₹" value={livePrice?.price} />
+        </div>
+        {change !== null && pct !== null && (
+          <span className={`pill ${change >= 0 ? "up" : "down"}`}>
+            {change >= 0 ? "+" : "−"}
+            {Math.abs(change).toFixed(2)} ({Math.abs(pct).toFixed(2)}%)
+          </span>
+        )}
+      </div>
       <CurrencyNote symbol={symbol} price={livePrice?.price ?? null} />
-      <div style={{ display: "flex", gap: "1.5rem", alignItems: "flex-start", flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 500px", minWidth: "320px" }}>
+      <div className="trade-grid">
+        <div className="chart-wrap">
           <PriceChart symbol={symbol} livePrice={livePrice} />
         </div>
         <OrderForm symbol={symbol} currentPrice={livePrice?.price ?? null} />

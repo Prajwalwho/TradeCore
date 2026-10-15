@@ -30,34 +30,10 @@ export function VerifyBanner() {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: "1rem",
-        flexWrap: "wrap",
-        padding: "0.6rem 1rem",
-        background: "#422006",
-        color: "#fde68a",
-        fontSize: "0.9rem",
-        borderBottom: "1px solid #713f12",
-      }}
-    >
-      <span>Verify your email ({me.email}) to start trading. Check your inbox for the link.</span>
-      <button
-        onClick={handleResend}
-        disabled={busy}
-        style={{
-          padding: "0.25rem 0.75rem",
-          background: "transparent",
-          color: "#fde68a",
-          border: "1px solid #fde68a",
-          borderRadius: "6px",
-          cursor: "pointer",
-        }}
-      >
-        {busy ? "..." : "Resend email"}
+    <div className="verify-banner">
+      <span>Confirm your email ({me.email}) to start trading. We sent you a link.</span>
+      <button onClick={handleResend} disabled={busy}>
+        {busy ? "Sending..." : "Resend email"}
       </button>
       {message && <span>{message}</span>}
     </div>

@@ -14,21 +14,11 @@ export function MarketStatusBar() {
   if (statuses.length === 0) return null;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        gap: "1.5rem",
-        padding: "0.5rem",
-        fontSize: "0.85rem",
-        color: "#94a3b8",
-        borderBottom: "1px solid #334155",
-      }}
-    >
+    <div className="market-status">
       {statuses.map((s) => (
-        <span key={s.code}>
-          {s.name}: <span style={{ color: s.open ? "#22c55e" : "#ef4444" }}>●</span>{" "}
-          {s.open ? "Open" : "Closed"}
+        <span key={s.code} className="status-chip">
+          <i className={s.open ? "dot open" : "dot"} />
+          {s.name} {s.open ? "open" : "closed"}
         </span>
       ))}
     </div>
