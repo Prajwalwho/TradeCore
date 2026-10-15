@@ -9,6 +9,7 @@ import {
   type Time,
 } from "lightweight-charts";
 import { fetchCandles, type PricePoint } from "../lib/market-api";
+import { useCurrentTheme } from "../lib/theme";
 
 type Props = {
   symbol: string;
@@ -16,10 +17,35 @@ type Props = {
 };
 
 const MAX_CANDLES = 400;
+const UP = "#0fb583";
+const DOWN = "#ee5a5f";
 
 type Bar = { open: number; high: number; low: number; close: number };
 
+const PALETTE = {
+  light: { bg: "#ffffff", text: "#667085", grid: "#eef1f4", border: "#e3e7ec", cross: "#98a2b3", crossLabel: "#1c2330" },
+  dark: { bg: "#151a20", text: "#8d97a6", grid: "#222a33", border: "#29303a", cross: "#6b7686", crossLabel: "#29303a" },
+};
+
+function chartOptions(theme: "light" | "dark") {
+  const c = PALETTE[theme];
+  return {
+    layout: { background: { type: ColorType.Solid, color: c.bg } as const, textColor: c.text },
+    grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+    timeScale: { borderColor: c.border, timeVisible: true, secondsVisible: false },
+    rightPriceScale: { borderColor: c.border },
+    crosshair: {
+      vertLine: { color: c.cross, labelBackgroundColor: c.crossLabel },
+      horzLine: { color: c.cross, labelBackgroundColor: c.crossLabel },
+    },
+  };
+}
+
 export function PriceChart({ symbol, livePrice }: Props) {
+  const theme = useCurrentTheme();
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -36,34 +62,17 @@ export function PriceChart({ symbol, livePrice }: Props) {
     }
 
     const chart = createChart(containerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: "#1e293b" },
-        textColor: "#94a3b8",
-      },
-      grid: {
-        vertLines: { color: "#334155" },
-        horzLines: { color: "#334155" },
-      },
+      ...chartOptions(themeRef.current),
       width: containerRef.current.clientWidth,
       height: 360,
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-        borderColor: "#334155",
-      },
-      rightPriceScale: { borderColor: "#334155" },
-      crosshair: {
-        vertLine: { color: "#64748b", labelBackgroundColor: "#334155" },
-        horzLine: { color: "#64748b", labelBackgroundColor: "#334155" },
-      },
     });
 
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#16a34a",
-      downColor: "#dc2626",
+      upColor: UP,
+      downColor: DOWN,
       borderVisible: false,
-      wickUpColor: "#16a34a",
-      wickDownColor: "#dc2626",
+      wickUpColor: UP,
+      wickDownColor: DOWN,
     });
 
     chartRef.current = chart;
@@ -118,6 +127,11 @@ export function PriceChart({ symbol, livePrice }: Props) {
     };
   }, [symbol]);
 
+  // Switch the chart colors when the theme changes.
+  useEffect(() => {
+    chartRef.current?.applyOptions(chartOptions(theme));
+  }, [theme]);
+
   // Apply each live tick to the current candle (or start a new one).
   useEffect(() => {
     if (!livePrice || !seriesRef.current || !isLoadedRef.current) {
@@ -166,59 +180,33 @@ export function PriceChart({ symbol, livePrice }: Props) {
   }, [livePrice]);
 
   return (
-    <div
-      style={{
-        background: "#1e293b",
-        borderRadius: "10px",
-        border: "1px solid #334155",
-        overflow: "hidden",
-        width: "100%",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "0.75rem 1rem",
-          borderBottom: "1px solid #334155",
-          fontSize: "0.85rem",
-          color: "#94a3b8",
-        }}
-      >
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-          <span style={{ fontWeight: 700, color: "#e2e8f0", fontSize: "1rem" }}>{symbol}</span>
-          <span
-            style={{
-              background: "#0f172a",
-              padding: "0.2rem 0.5rem",
-              borderRadius: "4px",
-              fontSize: "0.75rem",
-              fontWeight: 600,
-            }}
-          >
-            1M
-          </span>
+    <div className="pc-box">
+      <div className="pc-head">
+        <div className="pc-left">
+          <span className="pc-sym">{symbol}</span>
+          <span className="pc-chip">1M</span>
+          {livePrice && (
+            <span className="pc-live">
+              <i className="dot open" /> Live
+            </span>
+          )}
           {status === "loading" && <span>Loading chart…</span>}
           {status === "empty" && <span>No candle data available</span>}
-          {status === "error" && <span style={{ color: "#f87171" }}>Could not load chart data</span>}
+          {status === "error" && <span className="down">Could not load chart data</span>}
         </div>
         {activeBar && (
-          <div style={{ display: "flex", gap: "1rem", fontFamily: "monospace", fontSize: "0.8rem" }}>
+          <div className="pc-ohlc">
             <span>
-              O: <strong style={{ color: "#e2e8f0" }}>{activeBar.open.toFixed(2)}</strong>
+              O <b>{activeBar.open.toFixed(2)}</b>
             </span>
             <span>
-              H: <strong style={{ color: "#22c55e" }}>{activeBar.high.toFixed(2)}</strong>
+              H <b className="hi">{activeBar.high.toFixed(2)}</b>
             </span>
             <span>
-              L: <strong style={{ color: "#ef4444" }}>{activeBar.low.toFixed(2)}</strong>
+              L <b className="lo">{activeBar.low.toFixed(2)}</b>
             </span>
             <span>
-              C:{" "}
-              <strong style={{ color: activeBar.close >= activeBar.open ? "#22c55e" : "#ef4444" }}>
-                {activeBar.close.toFixed(2)}
-              </strong>
+              C <b className={activeBar.close >= activeBar.open ? "hi" : "lo"}>{activeBar.close.toFixed(2)}</b>
             </span>
           </div>
         )}

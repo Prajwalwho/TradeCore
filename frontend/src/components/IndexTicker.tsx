@@ -12,7 +12,7 @@ export function IndexTicker() {
     return () => clearInterval(id);
   }, []);
 
-  if (indices.length === 0) return null;
+  if (indices.length === 0) return <div className="index-ticker" />;
 
   return (
     <div className="index-ticker">

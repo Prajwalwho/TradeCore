@@ -1,2 +1,2 @@
-export const APP_NAME = "Paper Trading";
-export const TAGLINE = "Practice investing with real prices and virtual money";
+export const APP_NAME = "TradeCore";
+export const TAGLINE = "Practice trading with real market prices and virtual money";

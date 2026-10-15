@@ -4,6 +4,8 @@ import { APP_NAME } from "../brand";
 import { Logo } from "../components/Logo";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { PriceCell } from "../components/PriceCell";
+import { TickerTapeView } from "../components/TickerTape";
+import { CandleBackdrop } from "../components/CandleBackdrop";
 import { apiFetch } from "../lib/api-client";
 import { avatarColor, initials } from "../lib/avatar";
 import type { PricePoint } from "../lib/market-api";
@@ -28,7 +30,7 @@ export function LandingPage() {
   );
 
   return (
-    <div>
+    <div className="landing">
       <nav className="landing-nav">
         <span className="brand">
           <Logo size={30} />
@@ -45,9 +47,11 @@ export function LandingPage() {
         </div>
       </nav>
 
+      <TickerTapeView items={prices} />
+
       <section className="hero">
         <div>
-          <h1>Learn to invest with real market prices and no real risk.</h1>
+          <h1>Learn to trade with real market prices and no real risk.</h1>
           <p className="lead">
             Buy and sell Indian and US stocks with ₹10,00,000 of virtual cash. Your orders are matched in a real
             order book, and your profit and loss update as prices move.
@@ -66,7 +70,10 @@ export function LandingPage() {
         {rows.length > 0 && (
           <div className="card live-card">
             <div className="live-head">
-              Live prices <span>Delayed</span>
+              Live prices{" "}
+              <span>
+                <i className="dot open" /> Delayed
+              </span>
             </div>
             {rows.map((p) => {
               const change = p.previousClose ? p.price - p.previousClose : null;
@@ -81,7 +88,7 @@ export function LandingPage() {
                     <PriceCell prefix="₹" value={p.price} />
                     {change !== null && pct !== null && (
                       <span className={`pill ${change >= 0 ? "up" : "down"}`}>
-                        {change >= 0 ? "+" : "−"}
+                        {change >= 0 ? "▲ +" : "▼ −"}
                         {Math.abs(pct).toFixed(2)}%
                       </span>
                     )}
@@ -91,6 +98,10 @@ export function LandingPage() {
             })}
           </div>
         )}
+
+        <span className="blob a" />
+        <span className="blob b" />
+        <CandleBackdrop className="hero-bg" />
       </section>
 
       <section className="section">

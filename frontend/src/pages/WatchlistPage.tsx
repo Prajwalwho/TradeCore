@@ -141,7 +141,7 @@ export function WatchlistPage() {
             const live = prices[w.symbol];
             const info = changeInfo(live?.price, live?.previousClose);
             return (
-              <div key={w.symbol} className="wl-row" onClick={() => navigate(`/trade/${w.symbol}`)}>
+              <div key={w.symbol} className={`wl-row ${info ? (info.change >= 0 ? "bull" : "bear") : ""}`} onClick={() => navigate(`/trade/${w.symbol}`)}>
                 <span className="avatar" style={{ background: avatarColor(w.symbol) }}>
                   {initials(w.symbol)}
                 </span>

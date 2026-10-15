@@ -25,6 +25,7 @@ export function clearTokens() {
   refreshToken = null;
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
+  localStorage.removeItem("me-cache");
 }
 
 export class ApiError extends Error {

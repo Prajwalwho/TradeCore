@@ -21,10 +21,11 @@ export function TradePage() {
   const prev = livePrice?.previousClose ?? null;
   const change = livePrice && prev ? livePrice.price - prev : null;
   const pct = change !== null && prev ? (change / prev) * 100 : null;
+  const mood = change === null ? "" : change >= 0 ? " bull" : " bear";
 
   return (
     <Layout>
-      <div className="trade-head">
+      <div className={`trade-head${mood}`}>
         <span className="avatar" style={{ background: avatarColor(symbol) }}>
           {initials(symbol)}
         </span>
@@ -34,7 +35,7 @@ export function TradePage() {
         </div>
         {change !== null && pct !== null && (
           <span className={`pill ${change >= 0 ? "up" : "down"}`}>
-            {change >= 0 ? "+" : "−"}
+            {change >= 0 ? "▲ +" : "▼ −"}
             {Math.abs(change).toFixed(2)} ({Math.abs(pct).toFixed(2)}%)
           </span>
         )}
