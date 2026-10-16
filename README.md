@@ -22,8 +22,9 @@ US stocks are converted to rupees at the live USD/INR rate, so everyone keeps on
 
 | | |
 |---|---|
-| ![Landing page](docs/screenshots/landing.png) | ![Trade page](docs/screenshots/trade.jpg) |
-| ![Portfolio](docs/screenshots/portfolio.jpg) | ![Trades and P&L](docs/screenshots/trades.jpg) |
+| ![Landing page](docs/screenshots/landing.png) | ![Trade page](docs/screenshots/trade.png) |
+| ![Portfolio](docs/screenshots/portfolio.png) | ![Trades and P&L](docs/screenshots/trades.png) |
+| ![Dark mode](docs/screenshots/dark.png) | |
 
 ## Architecture
 
