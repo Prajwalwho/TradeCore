@@ -64,13 +64,13 @@ export function LandingPage() {
               Log in
             </Link>
           </div>
-          <p className="hero-note">Prices are delayed and come from a free, unofficial source.</p>
+          <p className="hero-note">Prices may be delayed by a few minutes.</p>
         </div>
 
         {rows.length > 0 && (
           <div className="card live-card">
             <div className="live-head">
-              Live prices{" "}
+              Market prices{" "}
               <span>
                 <i className="dot open" /> Delayed
               </span>

@@ -28,7 +28,7 @@ export function IndexTicker() {
             {change !== null && pct !== null && (
               <span className={`pill ${change >= 0 ? "up" : "down"}`}>
                 {change >= 0 ? "+" : "−"}
-                {Math.abs(change).toFixed(2)} ({Math.abs(pct).toFixed(2)}%)
+                {Math.abs(pct).toFixed(2)}%
               </span>
             )}
           </div>

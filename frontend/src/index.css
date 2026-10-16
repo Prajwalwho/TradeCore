@@ -491,3 +491,11 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .status.filled, .status.executed { color: var(--up); background: var(--up-soft); }
 .status.cancelled, .status.rejected, .status.failed { color: var(--down); background: var(--down-soft); }
 .status.pending, .status.partially_filled { color: var(--warn-text); background: var(--warn-bg); }
+
+/* ===== polish: strip fits on one row, candles stay out from behind the landing text ===== */
+.topbar-inner, .market-strip-inner, .app-main { max-width: 1200px; }
+.index-ticker { flex-wrap: nowrap; gap: 1.25rem; }
+.mood { min-width: 200px; }
+.market-status { min-width: 0; gap: 0.85rem; }
+.hero { padding-bottom: 7rem; }
+.hero-bg { inset: auto 0 0 0; height: 110px; opacity: 0.35; -webkit-mask-image: linear-gradient(180deg, transparent, #000 45%); mask-image: linear-gradient(180deg, transparent, #000 45%); }
