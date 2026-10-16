@@ -1,168 +1,167 @@
+# TradeCore
 
-Readme · MD
-# Paper Trading Platform
- 
-A paper (virtual-money) trading platform that uses **real market prices**. It has a custom C++ matching engine, a Node.js/TypeScript backend, and a React frontend. Users trade with virtual cash and get a realistic trading experience without risking real money.
- 
+A paper-trading platform: practise buying and selling Indian and US stocks with **virtual money and real (delayed) market prices**. It has a custom C++ matching engine, a Node.js and TypeScript backend, and a React frontend.
+
 > No order is ever sent to a real exchange. All money is virtual.
- 
-![screenshot placeholder](docs/screenshot.png)
- 
+
+![TradeCore watchlist](docs/screenshots/watchlist.png)
+
 ## What it does
- 
-Users register, get a virtual ₹10,00,000 balance, and place market and limit buy/sell orders on a small set of instruments (AAPL, TSLA, RELIANCE, TCS, INFY). Prices come from Yahoo Finance, and the chart shows real 1-minute candles from the most recent session.
- 
-Orders are matched by a custom C++ engine using price-time priority. Trades settle transactionally in Postgres: cash moves, positions update with average-cost basis, and realized and unrealized P&L are tracked. Order and trade updates reach the browser in real time over WebSocket.
- 
-### Liquidity: the market maker
- 
-Orders only match against resting orders, and a small user base cannot supply liquidity on its own. A built-in **market-maker account** quotes 3 bids and 3 asks per instrument around the live price (±0.10%, ±0.20% and ±0.30%, 2,000 shares per level) and re-quotes when the price moves 0.05% or more, or when its quotes are used up. Market orders therefore fill immediately, through the same engine and settlement path as every other order. The market maker has no special code path in settlement, so money conservation holds across all accounts.
- 
-It is **off by default** and enabled with `MARKET_MAKER_ENABLED=true`.
- 
+
+Users register, confirm their email, and get a virtual ₹10,00,000 balance. They can:
+
+- Search 45 stocks (31 Indian NSE stocks and 14 US stocks) and keep a watchlist.
+- Place **market** and **limit** orders, cancel open orders, and queue **after-market (AMO)** orders that run when the exchange opens.
+- Square off positions with one click.
+- Follow profit and loss: average cost, realized and unrealized P&L, closed-trade reports, winning and losing trade counts.
+- Watch prices update live on a scrolling ticker, price charts with real 1-minute candles, NIFTY and BANK NIFTY, and a bull or bear market-mood indicator.
+- Use market movers, news headlines and short lessons.
+- Switch between light and dark mode.
+
+US stocks are converted to rupees at the live USD/INR rate, so everyone keeps one rupee wallet.
+
+| | |
+|---|---|
+| ![Landing page](docs/screenshots/landing.png) | ![Trade page](docs/screenshots/trade.png) |
+| ![Portfolio](docs/screenshots/portfolio.png) | ![Trades and P&L](docs/screenshots/trades.png) |
+
 ## Architecture
- 
-```mermaid
+
+~~~mermaid
 graph TD
     subgraph Browser
-        FE[React Frontend<br/>Vite + TS]
+        FE[React frontend<br/>Vite + TypeScript]
     end
- 
-    subgraph "Node.js Backend"
+
+    subgraph "Node.js backend"
         API[Fastify REST API]
-        WS[WebSocket Server]
-        SETTLE[Settlement Service]
-        MD[Market Data<br/>Yahoo Finance poller]
-        MM[Market Maker]
+        WS[WebSocket server]
+        SETTLE[Settlement service]
+        MD[Market data<br/>price refresh + USD/INR]
+        MM[Market maker]
+        AMO[AMO scheduler]
     end
- 
-    subgraph "C++ Matching Engine"
-        ENGINE[engine_server<br/>Order Book + Matching]
+
+    subgraph "C++ matching engine"
+        ENGINE[engine_server<br/>order book + matching]
     end
- 
+
     PG[(PostgreSQL)]
-    REDIS[(Redis<br/>Pub/Sub)]
-    YAHOO[(Yahoo Finance)]
- 
-    FE -- "REST (fetch)" --> API
+    REDIS[(Redis pub/sub)]
+    YAHOO[(Yahoo Finance<br/>unofficial, delayed)]
+    BREVO[(Brevo<br/>email)]
+
+    FE -- "REST" --> API
     FE -- "WebSocket" --> WS
     API -- "JSON over stdin/stdout" --> ENGINE
-    API -- reads/writes --> PG
-    SETTLE -- "trades, orders, balances, positions" --> PG
-    SETTLE -- "publish events" --> REDIS
-    MD -- "prices every 15s" --> YAHOO
-    MD -- "publish ticks" --> REDIS
-    MM -- "quotes via the normal order path" --> API
-    WS -- "subscribe" --> REDIS
+    API -- "reads and writes" --> PG
     API --> SETTLE
-```
- 
-**Why a separate C++ engine?** Matching is a classic systems problem: deterministic, single-threaded per book, and performance-sensitive. Keeping it isolated makes it independently testable (37 unit tests, GoogleTest).
- 
-**Why Postgres is the source of truth.** The engine's book lives in memory. Every order is persisted to Postgres before it is sent to the engine. If the backend restarts, open limit orders are replayed into a fresh engine, rebuilding the same book without creating trades. If settlement fails after the engine has matched, the backend halts the engine instead of letting it run ahead of the database.
- 
-**Why Redis sits between the backend and WebSocket clients.** Price ticks and per-user order/trade events go through Redis pub/sub, so the real-time layer is not tied to a single process.
- 
+    SETTLE -- "trades, orders, balances, positions" --> PG
+    SETTLE -- "publish order and trade events" --> REDIS
+    MD -- "publish price ticks" --> REDIS
+    WS -- "subscribe" --> REDIS
+    MD --> YAHOO
+    MM -- "quotes through the normal order path" --> API
+    AMO -- "runs queued orders at open" --> API
+    API --> BREVO
+~~~
+
+**Why a separate C++ engine?** Order matching is deterministic and performance-sensitive, so it is isolated and tested on its own (37 unit tests, GoogleTest).
+
+**Why Postgres is the source of truth.** The order book lives in the engine's memory. Every order is saved to Postgres before it reaches the engine. If the backend restarts, open limit orders are replayed into a fresh engine and rebuild the same book without creating trades. If settlement ever fails after the engine has matched, the backend halts the engine instead of letting it run ahead of the database.
+
+**Why Redis.** Price ticks and per-user order and trade events go through Redis pub/sub, so the real-time layer is not tied to one process.
+
+## Key engineering decisions
+
+- **Price-time priority matching.** Bids sorted high to low, asks low to high, each price level a FIFO queue.
+- **Trades execute at the resting order's price,** as on a real exchange.
+- **Integer cents for all money math** in the backend, so floating point never loses a paisa.
+- **Funds and shares are reserved before an order reaches the engine.** A market buy gets a price cap from available cash, and a sell is checked against shares held minus shares already committed to open sells.
+- **One serialized order queue.** Funds check, save, match, settle and cancel run one at a time, so two orders can never pass the same funds check.
+- **One Postgres transaction per settlement.** The trade, both orders, both cash balances and both positions commit together or not at all.
+- **Database safety nets.** CHECK constraints keep balances and share counts non-negative.
+- **Market maker for liquidity.** A built-in account quotes bids and asks around the live price (three levels each side), so market orders fill even with a handful of users. It uses the same order path as everyone else, so there is no special case in settlement, and total cash across all accounts never changes.
+- **Safety for strangers.** Email verification before trading, password reset by single-use hashed links, per-IP rate limits, and bcrypt with a password length cap.
+
 ## Tech stack
- 
+
 | Layer | Technology |
 |---|---|
 | Matching engine | C++20, CMake, GoogleTest |
 | Backend | Node.js, TypeScript, Fastify, Drizzle ORM |
 | Database | PostgreSQL 17 |
-| Real-time | WebSocket (`ws`), Redis pub/sub |
-| Market data | Yahoo Finance (unofficial chart endpoint) |
+| Real-time | WebSocket (ws), Redis 8 pub/sub |
+| Market data | Yahoo Finance (unofficial chart endpoint), USD/INR from the same source |
+| Email | Brevo HTTP API (prints to the terminal when no key is set) |
 | Frontend | React 19, TypeScript, Vite, React Router, TradingView Lightweight Charts |
-| Infra (dev) | Docker Compose (Postgres + Redis) |
- 
-## Key engineering decisions
- 
-- **Price-time priority matching**: bids sorted descending and asks ascending (`std::map`), each price level a FIFO queue (`std::deque`).
-- **Trades execute at the resting order's price**, as on a real exchange.
-- **Integer-cents arithmetic** for all money math in the backend.
-- **Funds and shares are reserved before an order reaches the engine.** A market buy gets a price cap derived from available cash. A sell is checked against shares held minus shares already committed to open sells.
-- **Serialized order processing.** Funds check, persist, match, settle, and cancel run through one queue, so two orders can never pass the same funds check.
-- **One Postgres transaction per settlement.** The trade, both order updates, both cash balances, and both positions commit together or not at all.
-- **Database safety nets.** `CHECK` constraints keep balances and position quantities non-negative. P&L is stored as `bigint`.
-- **Average-cost positions** with realized P&L booked on each sell. Unrealized P&L is computed on read against the current price and never stored.
-## Project structure
- 
-```
-engine/     C++ matching engine (CMake build, GoogleTest suite)
-backend/    Fastify API, Drizzle/Postgres, Redis, WebSocket server, market maker
-frontend/   React + Vite client
-docs/       Demo script and notes
-```
- 
-## Running locally
- 
-**Prerequisites:** Node.js 22, a C++20 compiler, CMake, `nlohmann-json`, Docker.
- 
-```bash
-# 1. Start Postgres + Redis
-docker compose up -d
- 
-# 2. Build the matching engine
-cmake -S engine -B engine/build -DCMAKE_BUILD_TYPE=Release
-cmake --build engine/build --target engine_server
- 
-# 3. Backend setup (needs backend/.env, see below)
-cd backend
-npm install
-npx drizzle-kit migrate
-npx tsx scripts/seed-instruments.ts
- 
-# 4. Optional: create the market-maker account, then set MARKET_MAKER_ENABLED=true
-npx tsx scripts/seed-market-maker.ts
- 
-# 5. Build and start the backend
-npx tsc
-node dist/index.js
- 
-# 6. Start the frontend (new terminal)
-cd frontend
-npm install
-npm run dev
-```
- 
-**`backend/.env`** (all values here are development defaults):
- 
-```
-PORT=3000
-DB_HOST=localhost
-DB_PORT=5433
-DB_USER=trading
-DB_PASSWORD=trading_dev
-DB_NAME=paper_trading
-REDIS_HOST=localhost
-REDIS_PORT=6380
-DATABASE_URL=postgresql://trading:trading_dev@localhost:5433/paper_trading
-JWT_SECRET=<generate with: openssl rand -hex 32>
-MARKET_MAKER_ENABLED=true
-```
- 
-Put each variable on its own line. Never commit `.env`.
- 
-## Limitations
- 
-- **Market data is unofficial and delayed.** Prices come from Yahoo Finance's free chart endpoint, polled every 15 seconds. It has no SLA, it is usually delayed by a few minutes, and it can rate-limit or change without notice. This is not a licensed real-time feed.
-- **Prices are flat outside market hours.** NSE trades 9:15 to 15:30 IST. US markets open at about 19:00 IST. While a market is closed, users trade at the last known price.
-- **Mixed currencies (known issue).** Cash is in rupees, but AAPL and TSLA are priced in US dollars. This will be fixed with per-instrument currencies.
-- **Matching is internal.** Orders match inside this app's own order book, against other users and the market maker, not against a real exchange's book.
-- **Not production-ready for the public yet.** Rate limiting, email verification, password reset, HTTPS and backups are not done.
-## Status
- 
-Working end-to-end: auth, accounts, live prices and candles, order matching, settlement, positions and P&L, real-time updates, and market-maker liquidity. The engine has 37 unit tests. Backend integration tests and an engine benchmark are planned. See [`docs/demo-script.md`](docs/demo-script.md) for a guided walkthrough.
+| Infra | Docker Compose (nginx serves the built frontend) |
+
+## Quick start (one command)
+
+Needs only Docker.
+
+    git clone <this repo>
+    cd <this repo>
+    docker compose -f docker-compose.demo.yml up --build
+
+Then open http://localhost:8080 and create an account. The first build takes a few minutes because it compiles the C++ engine. The backend creates the database tables, the 45-stock catalog and the market-maker account on start.
+
+Demo mode skips email verification and treats markets as always open, so you can trade at any hour. Outside real market hours, prices are the last known real price. Stop with `docker compose -f docker-compose.demo.yml down` (add `-v` to wipe the data).
+
+## Local development
+
+Needs Node.js 22, a C++20 compiler, CMake and Docker.
+
+    # 1. Postgres and Redis
+    docker compose up -d
+
+    # 2. Build the engine
+    cmake -S engine -B engine/build -DCMAKE_BUILD_TYPE=Release
+    cmake --build engine/build --target engine_server
+
+    # 3. Backend (copy backend/.env.example to backend/.env and set JWT_SECRET first)
+    cd backend
+    npm install
+    npx drizzle-kit migrate
+    npx tsx scripts/seed-instruments.ts
+    npx tsx scripts/seed-market-maker.ts
+    npx tsc && node dist/index.js
+
+    # 4. Frontend (new terminal)
+    cd frontend
+    npm install
+    npm run dev
 
 ## Tests and performance
 
-Backend integration tests run the real app against a separate Postgres database and check settlement, funds and share reservation, price-time priority, cancellation, and that total cash across all accounts never changes (`npm test`).
+Backend integration tests run the real app against a separate Postgres database and check settlement, funds and share reservation, price-time priority, cancellation, email verification and that total cash across all accounts never changes:
+
+    cd backend && npm test
 
 Measured on an Intel Core i5-13420H laptop (WSL2, Docker Postgres):
 
 | What | Result |
 |---|---|
-| C++ engine through its JSON stdin/stdout protocol | about 38,000 orders/sec (200,000 random limit orders, 78% trading); single-order round trip p50 87 µs, p99 278 µs |
+| C++ engine through its JSON stdin/stdout protocol | about 38,000 orders/sec (200,000 random limit orders, 78% of them trading); single-order round trip p50 87 µs, p99 278 µs |
 | Full order path: funds check, Postgres, engine, settlement transaction | about 70 orders/sec, about 36 settled trades/sec |
 
-The full path is much slower by design: orders are processed one at a time so two orders can never pass the same funds check, and each one makes several database round trips.
+The full path is much slower on purpose: orders run one at a time so two orders can never pass the same funds check, and each makes several database round trips.
+
+## Limitations
+
+- **Prices are unofficial and delayed.** They come from Yahoo Finance's free chart endpoint, which has no SLA, is usually a few minutes late, and can rate-limit or change. This is not a licensed real-time feed.
+- **Liquidity is simulated.** Orders match against other users and a market-maker account, not against a real exchange's order book.
+- **US prices are converted to rupees,** so a US stock's rupee price keeps moving with the exchange rate, and P&L on US stocks includes the currency effect.
+- **Market hours cover weekends and daily hours only,** not exchange holidays.
+- **No futures or options.**
+- **Not production hardened.** There is no licensed data, no monitoring, and a free-tier host may sleep.
+
+## Project structure
+
+    engine/     C++ matching engine (CMake, GoogleTest)
+    backend/    Fastify API, Drizzle and Postgres, Redis, WebSocket, market maker, tests, benchmarks
+    frontend/   React and Vite client
+    docs/       Demo script and screenshots
+
+See [docs/demo-script.md](docs/demo-script.md) for a guided walkthrough.
