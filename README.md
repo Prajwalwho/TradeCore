@@ -15,7 +15,7 @@ Users register, confirm their email, and get a virtual ₹10,00,000 balance. The
 - Square off positions with one click.
 - Follow profit and loss: average cost, realized and unrealized P&L, closed-trade reports, winning and losing trade counts.
 - Watch prices update live on a scrolling ticker, price charts with real 1-minute candles, NIFTY and BANK NIFTY, and a bull or bear market-mood indicator.
-- Use market movers, news headlines and short lessons.
+- Scan the whole market on a live sector heat map, and use market movers, news headlines and short lessons.
 - Switch between light and dark mode.
 
 US stocks are converted to rupees at the live USD/INR rate, so everyone keeps one rupee wallet.

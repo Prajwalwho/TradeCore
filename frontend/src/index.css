@@ -499,3 +499,21 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .market-status { min-width: 0; gap: 0.85rem; }
 .hero { padding-bottom: 7rem; }
 .hero-bg { inset: auto 0 0 0; height: 110px; opacity: 0.35; -webkit-mask-image: linear-gradient(180deg, transparent, #000 45%); mask-image: linear-gradient(180deg, transparent, #000 45%); }
+
+/* ===== market map ===== */
+.map-sector { margin-bottom: 1.4rem; }
+.map-sector-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; font-weight: 800; }
+.map-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px; }
+.map-tile {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 0.2rem;
+  min-height: 86px; padding: 0.6rem 0.7rem; border: none; border-radius: 10px; color: #fff; text-align: left;
+  transition: background-color 0.9s ease, transform 0.15s, box-shadow 0.15s;
+}
+.map-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28); }
+.map-tile b { font-size: 0.95rem; }
+.map-tile .pct { font-weight: 800; font-size: 1.05rem; }
+.map-tile small { opacity: 0.85; font-size: 0.72rem; font-feature-settings: "tnum"; }
+.map-legend { display: flex; align-items: center; gap: 0.6rem; margin-top: 1rem; color: var(--muted); font-size: 0.8rem; flex-wrap: wrap; }
+.map-legend i { display: block; height: 8px; width: 180px; border-radius: 999px; background: linear-gradient(90deg, #dd4146, #566074, #0aa56f); }
+.map-legend-note { margin-left: 0.5rem; }
+@media (max-width: 760px) { .map-tiles { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); } }

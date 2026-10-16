@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "../components/Layout";
+import { MarketMap } from "../components/MarketMap";
 import { fetchMovers, fetchNews, type Movers, type Mover, type NewsItem } from "../lib/tools-api";
 import { LESSONS } from "./learn-content";
-import "./ToolsPage.css";
 
-type Tab = "MOVERS" | "NEWS" | "LEARN";
+type Tab = "MAP" | "MOVERS" | "NEWS" | "LEARN";
+
+const TAB_LABELS: Record<Tab, string> = {
+  MAP: "Market map",
+  MOVERS: "Market movers",
+  NEWS: "News",
+  LEARN: "Learn",
+};
 
 const NEWS_OPTIONS = ["ALL", "RELIANCE", "TCS", "INFY", "AAPL", "TSLA"];
 
@@ -37,7 +44,7 @@ function MoverTable({ rows, empty }: { rows: Mover[]; empty: string }) {
 }
 
 export function ToolsPage() {
-  const [tab, setTab] = useState<Tab>("MOVERS");
+  const [tab, setTab] = useState<Tab>("MAP");
   const [movers, setMovers] = useState<Movers | null>(null);
   const [news, setNews] = useState<NewsItem[] | null>(null);
   const [newsSymbol, setNewsSymbol] = useState("ALL");
@@ -66,7 +73,7 @@ export function ToolsPage() {
     <Layout>
       <h1>Tools</h1>
       <div className="tl-tabs">
-        {(["MOVERS", "NEWS", "LEARN"] as Tab[]).map((t) => (
+        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
           <button
             key={t}
             className={tab === t ? "tab active" : "tab"}
@@ -75,12 +82,14 @@ export function ToolsPage() {
               setTab(t);
             }}
           >
-            {t === "MOVERS" ? "Market movers" : t === "NEWS" ? "News" : "Learn"}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
       {error && <p className="tl-error">{error}</p>}
+
+      {tab === "MAP" && <MarketMap />}
 
       {tab === "MOVERS" &&
         (!movers ? (

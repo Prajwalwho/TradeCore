@@ -17,3 +17,8 @@ export function fetchMovers(): Promise<Movers> {
 export function fetchNews(symbol: string): Promise<NewsItem[]> {
   return apiFetch<NewsItem[]>(`/news?symbol=${encodeURIComponent(symbol)}`);
 }
+export type MapStock = { symbol: string; name: string; sector: string; exchange: string };
+
+export function fetchMarketMap(): Promise<MapStock[]> {
+  return apiFetch<MapStock[]>("/market-map");
+}
