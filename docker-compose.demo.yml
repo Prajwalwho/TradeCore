@@ -1,6 +1,13 @@
+name: tradecore-demo
+# Runs the whole app with one command:
+#   docker compose -f docker-compose.demo.yml up --build
+# Then open http://localhost:8080
+#
+# DEMO SETTINGS: emails are skipped, markets count as always open, and the JWT secret below is public.
+# Never use these settings for a real deployment.
 services:
   postgres:
-    image: postgres:16
+    image: postgres:17
     environment:
       POSTGRES_USER: trading
       POSTGRES_PASSWORD: trading_dev
@@ -11,15 +18,21 @@ services:
       test: ["CMD-SHELL", "pg_isready -U trading"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   redis:
-    image: redis:7
+    image: redis:8
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     environment:
       PORT: 3000
       DB_HOST: postgres
@@ -30,12 +43,16 @@ services:
       DATABASE_URL: postgresql://trading:trading_dev@postgres:5432/paper_trading
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-demo-only-secret-change-me-before-any-real-deployment}
+      APP_URL: http://localhost:8080
+      MARKET_MAKER_ENABLED: "true"
+      REQUIRE_EMAIL_VERIFICATION: "false"
+      MARKETS_ALWAYS_OPEN: "true"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "3000:3000"
 

@@ -3,15 +3,23 @@ import { config } from "./config/env.js";
 import { engineClient } from "./modules/engine/engine.client.js";
 import { marketDataService } from "./modules/market-data/market-data.service.js";
 import { marketMakerService } from "./modules/market-maker/market-maker.service.js";
+import { amoService } from "./modules/amo/amo.service.js";
 import { attachWebSocketServer } from "./websocket/ws.server.js";
 import { redisPublisher, redisSubscriber } from "./redis/redis.client.js";
 import { replayOpenOrders } from "./modules/engine/engine-replay.js";
-import { amoService } from "./modules/amo/amo.service.js";
+import { runMigrations, seedInstruments, ensureMarketMaker } from "./db/bootstrap.js";
 
 const app = buildApp();
 
 const start = async () => {
   try {
+    // Set up the database first, so a fresh install works with a single command.
+    await runMigrations();
+    await seedInstruments();
+    if (config.marketMaker.enabled) {
+      await ensureMarketMaker();
+    }
+
     await engineClient.start();
     app.log.info("matching engine ready");
 

@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:3000";
+import { API_BASE } from "./config";
 
 type TokenPair = { accessToken: string; refreshToken: string };
 

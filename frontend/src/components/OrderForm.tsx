@@ -1,3 +1,4 @@
+import { inr } from "../lib/format";
 import { useEffect, useState, type FormEvent } from "react";
 import { fetchAccount } from "../lib/account-api";
 import { fetchPositions, type Position } from "../lib/positions-api";
@@ -107,7 +108,7 @@ export function OrderForm({ symbol, currentPrice }: Props) {
       <div className="ticket-summary">
         <div className="summary-item">
           <span className="label">Available Cash</span>
-          <span className="value">₹{balance ?? "—"}</span>
+          <span className="value">{balance === null ? "—" : inr(balance)}</span>
         </div>
         <div className="summary-item">
           <span className="label">{symbol} Held</span>
@@ -190,7 +191,7 @@ export function OrderForm({ symbol, currentPrice }: Props) {
         <div className="estimate-box">
           <span>Est. {side === "BUY" ? "Cost" : "Proceeds"}</span>
           <span className="estimate-value">
-            ₹{estimatedCost ? estimatedCost.toFixed(2) : "0.00"}
+            {inr(estimatedCost)}
           </span>
         </div>
 

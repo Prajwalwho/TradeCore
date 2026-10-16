@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchStats, type StockStats as Stats } from "../lib/stats-api";
 import "./StockStats.css";
 
-const fmt = (n: number | null) => (n === null ? "—" : n.toFixed(2));
+const fmt = (n: number | null) => (n === null ? "—" : n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 export function StockStats({ symbol }: { symbol: string }) {
   const [stats, setStats] = useState<Stats | null>(null);

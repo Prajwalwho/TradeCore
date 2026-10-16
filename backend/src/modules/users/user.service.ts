@@ -17,7 +17,7 @@ async function sendVerificationEmail(userId: string, email: string) {
     to: email,
     subject: "Verify your email",
     text:
-      `Welcome to Paper Trading!\n\nConfirm your email to start trading:\n` +
+      `Welcome to TradeCore!\n\nConfirm your email to start trading:\n` +
       `${config.appUrl}/verify-email?token=${token}\n\nThis link works for 24 hours.`,
   });
 }
@@ -35,11 +35,16 @@ export const userService = {
 
     await accountRepository.createForUser(user.id);
 
-    try {
-      await sendVerificationEmail(user.id, user.email);
-    } catch (err) {
-      // Registration must not fail just because the email could not be sent; the user can resend.
-      console.error("[auth] could not send verification email", err);
+    if (!config.emailVerification.required) {
+      // Demo mode: no email step, the account can trade straight away.
+      await userRepository.markEmailVerified(user.id);
+    } else {
+      try {
+        await sendVerificationEmail(user.id, user.email);
+      } catch (err) {
+        // Registration must not fail just because the email could not be sent; the user can resend.
+        console.error("[auth] could not send verification email", err);
+      }
     }
 
     return user;
@@ -99,7 +104,7 @@ export const userService = {
       to: user.email,
       subject: "Reset your password",
       text:
-        `Someone asked to reset your Paper Trading password.\n\n` +
+        `Someone asked to reset your TradeCore password.\n\n` +
         `Choose a new one here:\n${config.appUrl}/reset-password?token=${token}\n\n` +
         `This link works for 1 hour. If this was not you, ignore this email.`,
     });

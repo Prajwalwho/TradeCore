@@ -21,7 +21,7 @@ type TradeEvent = {
 
 type IncomingMessage = OrderUpdateEvent | TradeEvent | { type: string };
 
-const WS_BASE = "ws://localhost:3000/ws";
+import { WS_URL } from "../lib/config";
 
 export function useOrderEvents() {
   const [version, setVersion] = useState(0);
@@ -33,7 +33,7 @@ export function useOrderEvents() {
       return;
     }
 
-    const socket = new WebSocket(`${WS_BASE}?token=${token}`);
+    const socket = new WebSocket(`${WS_URL}?token=${token}`);
     socketRef.current = socket;
 
     socket.onmessage = (event) => {

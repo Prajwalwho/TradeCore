@@ -1,7 +1,7 @@
 import { getAccessToken } from "./api-client";
 import type { PricePoint } from "./market-api";
 
-const WS_BASE = "ws://localhost:3000/ws";
+import { WS_URL } from "./config";
 
 // One shared WebSocket for the whole app. It opens when the first component needs prices,
 // closes when the last one leaves, and reconnects by itself if the connection drops.
@@ -19,7 +19,7 @@ function connect() {
   const token = getAccessToken();
   if (!token || socket) return;
 
-  const ws = new WebSocket(`${WS_BASE}?token=${token}`);
+  const ws = new WebSocket(`${WS_URL}?token=${token}`);
   socket = ws;
 
   ws.onopen = () => {

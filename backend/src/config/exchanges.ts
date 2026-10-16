@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { CATALOG, type ExchangeCode } from "./catalog.js";
 
 export type { ExchangeCode };
@@ -24,7 +25,11 @@ export function exchangeFor(symbol: string): ExchangeCode | null {
   return SYMBOL_EXCHANGE[symbol] ?? null;
 }
 
+// Demo mode: lets you trade at any hour, at the last known price.
+export const ALWAYS_OPEN = process.env.MARKETS_ALWAYS_OPEN === "true";
+
 export function isExchangeOpen(code: ExchangeCode, now = new Date()): boolean {
+  if (ALWAYS_OPEN) return true;
   const ex = EXCHANGES[code];
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: ex.timeZone,
@@ -45,7 +50,7 @@ export function isExchangeOpen(code: ExchangeCode, now = new Date()): boolean {
 export function allMarketStatuses(now = new Date()) {
   return (Object.keys(EXCHANGES) as ExchangeCode[]).map((code) => ({
     code,
-    name: EXCHANGES[code].name,
+    name: EXCHANGES[code].name + (ALWAYS_OPEN ? " (demo)" : ""),
     open: isExchangeOpen(code, now),
     symbols: Object.keys(SYMBOL_EXCHANGE).filter((s) => SYMBOL_EXCHANGE[s] === code),
   }));

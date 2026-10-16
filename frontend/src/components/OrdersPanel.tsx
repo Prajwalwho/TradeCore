@@ -1,3 +1,4 @@
+import { inr } from "../lib/format";
 import { useEffect, useState } from "react";
 import { fetchOrders, cancelOrder, type Order } from "../lib/orders-api";
 import { ApiError } from "../lib/api-client";
@@ -67,8 +68,8 @@ export function OrdersPanel({ symbol }: Props) {
                 <td>{o.type}</td>
                 <td>{o.quantity}</td>
                 <td>{o.filledQuantity}</td>
-                <td>{o.price ?? "—"}</td>
-                <td>{o.status}</td>
+                <td>{inr(o.price)}</td>
+                <td><span className={`status ${o.status.toLowerCase()}`}>{o.status.replace("_", " ").toLowerCase()}</span></td>
                 <td>
                   <button
                     onClick={() => handleCancel(o.id)}
@@ -106,8 +107,8 @@ export function OrdersPanel({ symbol }: Props) {
                 <td>{o.type}</td>
                 <td>{o.quantity}</td>
                 <td>{o.filledQuantity}</td>
-                <td>{o.avgFillPrice ?? o.price ?? "—"}</td>
-                <td>{o.status}</td>
+                <td>{inr(o.avgFillPrice ?? o.price)}</td>
+                <td><span className={`status ${o.status.toLowerCase()}`}>{o.status.replace("_", " ").toLowerCase()}</span></td>
               </tr>
             ))}
           </tbody>

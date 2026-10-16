@@ -33,6 +33,11 @@ export const config = {
   marketHours: {
     enforce: process.env.ENFORCE_MARKET_HOURS === "true",
   },
+
+  // Set REQUIRE_EMAIL_VERIFICATION=false for local demos: new accounts can trade straight away.
+  emailVerification: {
+    required: process.env.REQUIRE_EMAIL_VERIFICATION !== "false",
+  },
 };
 
 if (!config.jwtSecret) {

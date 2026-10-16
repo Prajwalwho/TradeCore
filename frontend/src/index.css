@@ -485,3 +485,9 @@ table { font-feature-settings: "tnum"; }
 html { overflow-y: scroll; scrollbar-gutter: stable; }
 .app-main { min-height: 70vh; }
 .tape { min-height: 38px; }
+
+/* ===== order status chips ===== */
+.status { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; text-transform: capitalize; }
+.status.filled, .status.executed { color: var(--up); background: var(--up-soft); }
+.status.cancelled, .status.rejected, .status.failed { color: var(--down); background: var(--down-soft); }
+.status.pending, .status.partially_filled { color: var(--warn-text); background: var(--warn-bg); }
