@@ -28,6 +28,11 @@ export function clearTokens() {
   localStorage.removeItem("me-cache");
 }
 
+// Tells the rest of the app that the login no longer works, so it can go back to the login page.
+function signalExpired() {
+  window.dispatchEvent(new Event("auth:expired"));
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -39,6 +44,7 @@ export class ApiError extends Error {
 
 async function tryRefresh(): Promise<boolean> {
   if (!refreshToken) {
+    signalExpired();
     return false;
   }
 
@@ -50,6 +56,7 @@ async function tryRefresh(): Promise<boolean> {
 
   if (!res.ok) {
     clearTokens();
+    signalExpired();
     return false;
   }
 

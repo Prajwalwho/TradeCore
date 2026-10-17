@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { isAuthenticated as checkAuth, clearTokens } from "../lib/api-client";
 import { login as apiLogin, register as apiRegister } from "../lib/auth-api";
 
@@ -13,6 +13,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(checkAuth());
+
+  // If the saved login stops working (expired, or from another server), go back to the login page.
+  useEffect(() => {
+    const onExpired = () => setAuthed(false);
+    window.addEventListener("auth:expired", onExpired);
+    return () => window.removeEventListener("auth:expired", onExpired);
+  }, []);
 
   async function login(email: string, password: string) {
     await apiLogin(email, password);

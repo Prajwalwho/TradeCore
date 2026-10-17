@@ -517,3 +517,10 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .map-legend i { display: block; height: 8px; width: 180px; border-radius: 999px; background: linear-gradient(90deg, #dd4146, #566074, #0aa56f); }
 .map-legend-note { margin-left: 0.5rem; }
 @media (max-width: 760px) { .map-tiles { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); } }
+
+/* ===== market map v2: sectors sit side by side and fill the width, like a heat map ===== */
+.map-board { display: flex; flex-wrap: wrap; gap: 18px 12px; }
+.map-sector { margin: 0; min-width: 230px; }
+.map-tiles { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 5px; }
+.map-tile { min-height: 96px; }
+.map-tile b { font-size: 1rem; }
