@@ -1,6 +1,7 @@
 import { userRoutes } from "./modules/users/user.routes.js";
 import Fastify from "fastify";
 import rateLimit from "@fastify/rate-limit";
+import { config } from "./config/env.js";
 import { jwtPlugin } from "./plugins/jwt.js";
 import {
   serializerCompiler,
@@ -25,18 +26,13 @@ import { marketMapRoutes } from "./modules/market-map/market-map.routes.js";
 import cors from "@fastify/cors";
 
 export function buildApp() {
-  const app = Fastify({ logger: true }).withTypeProvider<ZodTypeProvider>();
+  const app = Fastify({ logger: true, trustProxy: config.trustProxy }).withTypeProvider<ZodTypeProvider>();
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
   app.register(cors, {
-    origin: [
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:8080",
-      "http://127.0.0.1:8080",
-    ],
+    origin: config.corsOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

@@ -27,3 +27,6 @@ Thumbs.db
 
 # Build output
 backend/dist/
+
+backups/
+.env.prod

@@ -1,5 +1,13 @@
 import "dotenv/config";
 
+const list = (value: string | undefined, fallback: string[]) =>
+  value
+    ? value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : fallback;
+
 export const config = {
   port: Number(process.env.PORT ?? 3000),
 
@@ -7,6 +15,17 @@ export const config = {
 
   // Where the website lives. Used to build the links inside emails.
   appUrl: process.env.APP_URL ?? "http://localhost:5173",
+
+  // Websites allowed to call this API, separated by commas.
+  corsOrigins: list(process.env.CORS_ORIGINS, [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+  ]),
+
+  // Set TRUST_PROXY=true when the backend sits behind a reverse proxy (so rate limits see the real visitor address).
+  trustProxy: process.env.TRUST_PROXY === "true",
 
   database: {
     host: process.env.DB_HOST ?? "localhost",
