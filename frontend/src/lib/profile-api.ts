@@ -5,9 +5,13 @@ export type Profile = {
   totalFunds: string;
   availableFunds: string;
   usedMargin: string;
+  holdingsValue: string;
+  totalValue: string;
+  unrealizedPnl: string;
   netProfit: string;
   netLoss: string;
   netPnl: string;
+  totalPnl: string;
   positiveCount: number;
   negativeCount: number;
   bySymbol: { symbol: string; pnl: string; trades: number }[];

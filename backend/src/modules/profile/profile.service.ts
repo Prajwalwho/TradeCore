@@ -4,8 +4,10 @@ import { instruments, realizedPnlEvents } from "../../db/schema.js";
 import { accountRepository } from "../accounts/account.repository.js";
 import { userRepository } from "../users/user.repository.js";
 import { orderRepository } from "../orders/order.repository.js";
+import { positionRepository } from "../positions/position.repository.js";
+import { marketDataService } from "../market-data/market-data.service.js";
 import { AppError } from "../../utils/app-error.js";
-import { centsToDecimal, decimalToCents } from "../../utils/money.js";
+import { centsToDecimal, decimalToCents, priceToCents } from "../../utils/money.js";
 
 export const profileService = {
   async getProfile(userId: string) {
@@ -19,6 +21,18 @@ export const profileService = {
 
     const balanceCents = decimalToCents(account.balance);
     const reservedCents = await orderRepository.reservedCents(account.id);
+
+    // Shares still held: their value now, and the gain or loss that is not yet locked in.
+    let holdingsCents = 0;
+    let unrealizedCents = 0;
+    for (const { position, symbol } of await positionRepository.findByAccountId(account.id)) {
+      if (position.quantity <= 0) continue;
+      const live = marketDataService.getPrice(symbol);
+      if (!live) continue;
+      const priceCents = priceToCents(live.price);
+      holdingsCents += priceCents * position.quantity;
+      unrealizedCents += (priceCents - position.avgCostCents) * position.quantity;
+    }
 
     const rows = await db
       .select({ event: realizedPnlEvents, symbol: instruments.symbol })
@@ -48,14 +62,20 @@ export const profileService = {
       bySymbol.set(symbol, entry);
     }
 
+    const realizedCents = profitCents - lossCents;
+
     return {
       email: user.email,
-      totalFunds: centsToDecimal(balanceCents),
+      totalFunds: centsToDecimal(balanceCents), // cash
       availableFunds: centsToDecimal(Math.max(0, balanceCents - reservedCents)),
       usedMargin: centsToDecimal(reservedCents),
+      holdingsValue: centsToDecimal(holdingsCents),
+      totalValue: centsToDecimal(balanceCents + holdingsCents),
+      unrealizedPnl: centsToDecimal(unrealizedCents),
       netProfit: centsToDecimal(profitCents),
       netLoss: centsToDecimal(lossCents),
-      netPnl: centsToDecimal(profitCents - lossCents),
+      netPnl: centsToDecimal(realizedCents),
+      totalPnl: centsToDecimal(realizedCents + unrealizedCents),
       positiveCount,
       negativeCount,
       bySymbol: Array.from(bySymbol.entries()).map(([symbol, v]) => ({
