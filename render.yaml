@@ -1,0 +1,80 @@
+# Render Blueprint: creates the API (with the C++ engine), the website, Postgres and Key Value (Redis).
+# Settings for a public portfolio demo: no email step, and markets count as open at any hour.
+databases:
+  - name: tradecore-db
+    plan: free
+    databaseName: paper_trading
+    user: trading
+
+services:
+  - type: keyvalue
+    name: tradecore-redis
+    plan: free
+    ipAllowList: []
+
+  - type: web
+    name: tradecore-prajwal-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: tradecore-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: tradecore-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: tradecore-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: tradecore-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: tradecore-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          type: keyvalue
+          name: tradecore-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: keyvalue
+          name: tradecore-redis
+          property: port
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MARKET_MAKER_ENABLED
+        value: "true"
+      - key: REQUIRE_EMAIL_VERIFICATION
+        value: "false"
+      - key: MARKETS_ALWAYS_OPEN
+        value: "true"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: APP_URL
+        value: https://tradecore-prajwal-web.onrender.com
+      - key: CORS_ORIGINS
+        value: https://tradecore-prajwal-web.onrender.com
+
+  - type: web
+    name: tradecore-prajwal-web
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_API_URL
+        value: https://tradecore-prajwal-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

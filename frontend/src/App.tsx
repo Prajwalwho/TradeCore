@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/Layout";
+import { WakeBanner } from "./components/WakeBanner";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -36,6 +37,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <WakeBanner />
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Home />} />

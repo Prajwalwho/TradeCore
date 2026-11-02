@@ -42,6 +42,40 @@ export class ApiError extends Error {
   }
 }
 
+// Free hosting puts the server to sleep when nobody is using it, and waking it takes up to a minute.
+// For read requests on a hosted server, keep trying for about a minute and show the "waking up" banner.
+// Writes (orders and so on) are never repeated, so nothing can be submitted twice.
+const WAKE_ENABLED = !API_BASE.includes("localhost") && !API_BASE.includes("127.0.0.1");
+const WAKE_DELAYS_MS = [2000, 3000, 4000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000];
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchWithWake(url: string, init: RequestInit): Promise<Response> {
+  const method = (init.method ?? "GET").toUpperCase();
+  if (!WAKE_ENABLED || method !== "GET") {
+    return fetch(url, init);
+  }
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (![502, 503, 504].includes(res.status)) {
+        if (attempt > 0) window.dispatchEvent(new Event("api:awake"));
+        return res;
+      }
+    } catch {
+      // a network error: the server is probably still waking up
+    }
+
+    const delay = WAKE_DELAYS_MS[attempt];
+    if (delay === undefined) {
+      window.dispatchEvent(new Event("api:awake"));
+      throw new TypeError("The server is not responding");
+    }
+    window.dispatchEvent(new Event("api:waking"));
+    await sleep(delay);
+  }
+}
+
 async function tryRefresh(): Promise<boolean> {
   if (!refreshToken) {
     signalExpired();
@@ -82,7 +116,7 @@ export async function apiFetch<T>(
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetchWithWake(`${API_BASE}${path}`, { ...options, headers });
 
   if (res.status === 401 && allowRetry) {
     const refreshed = await tryRefresh();
