@@ -54,8 +54,6 @@ services:
       - key: MARKET_MAKER_ENABLED
         value: "true"
       - key: REQUIRE_EMAIL_VERIFICATION
-        value: "false"
-      - key: MARKETS_ALWAYS_OPEN
         value: "true"
       - key: TRUST_PROXY
         value: "true"
@@ -63,6 +61,12 @@ services:
         value: https://tradecore-prajwal-web.onrender.com
       - key: CORS_ORIGINS
         value: https://tradecore-prajwal-web.onrender.com
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: TradeCore
 
   - type: web
     name: tradecore-prajwal-web
